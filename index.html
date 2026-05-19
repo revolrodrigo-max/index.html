@@ -316,16 +316,18 @@ const URLS = {
 };
 
 /* ── CSV parser ── */
-function parseCSV(txt){
-  const lines = txt.trim().split('\n');
-  if(lines.length < 2) return [];
-  const headers = splitCSVLine(lines[0]);
-  return lines.slice(1).map(l=>{
-    const vals = splitCSVLine(l);
-    const obj = {};
-    headers.forEach((h,i)=>{ obj[h.trim()] = (vals[i]||'').trim(); });
-    return obj;
-  }).filter(r=>Object.values(r).some(v=>v));
+function csvLines(txt){
+  const res=[]; let cur=''; let inQ=false;
+  for(let i=0;i<txt.length;i++){
+    const c=txt[i];
+    if(c==='"') inQ=!inQ;
+    else if((c==='\r'||c==='\n')&&!inQ){
+      if(c==='\r'&&txt[i+1]==='\n') i++;
+      res.push(cur); cur='';
+    } else cur+=c;
+  }
+  if(cur) res.push(cur);
+  return res;
 }
 function splitCSVLine(line){
   const res=[]; let cur=''; let inQ=false;
@@ -337,11 +339,32 @@ function splitCSVLine(line){
   res.push(cur);
   return res;
 }
-async function fetchCSV(url){
+function parseCSV(txt, requiredKey){
+  const lines = csvLines(txt);
+  if(lines.length < 2) return [];
+  const headers = splitCSVLine(lines[0]);
+  return lines.slice(1).map(l=>{
+    const vals = splitCSVLine(l);
+    const obj = {};
+    headers.forEach((h,i)=>{ obj[h.trim()] = (vals[i]||'').trim(); });
+    return obj;
+  }).filter(r=>{
+    if(!Object.values(r).some(v=>v)) return false;
+    if(requiredKey && !r[requiredKey]) return false;
+    return true;
+  });
+}
+async function fetchCSV(url, headerMarker, requiredKey){
   try{
     const r = await fetch(url+'&cachebust='+Date.now());
     if(!r.ok) return null;
-    return parseCSV(await r.text());
+    let txt = await r.text();
+    if(headerMarker){
+      const lines = csvLines(txt);
+      const idx = lines.findIndex(l => l.toUpperCase().includes(headerMarker));
+      if(idx >= 0) txt = lines.slice(idx).join('\n');
+    }
+    return parseCSV(txt, requiredKey);
   }catch(e){ return null; }
 }
 
@@ -438,11 +461,11 @@ function renderCierresEq(data, ids, mcIds){
     }
     el.innerHTML = `<div class="ct-table">${data.map(row=>{
       const nombre  = row['NOMBRE COMPLETO']||row['NOMBRE']||row['nombre']||'—';
-      const salida  = row['SALIDA']||row['salida']||row['Fecha Cierre']||'';
-      const dur     = row['DURACIÓN']||row['duracion']||'';
-      const semana  = row['SEMANA DEL\nPROGRAMA']||row['SEMANA DEL PROGRAMA']||row['Sem. inicio']||'';
+      const salida  = row['SALIDA']||row['FIN']||row['salida']||row['Fecha Cierre']||'';
+      const dur     = row['DURACIÓN']||row['DURACION']||row['duracion']||'';
+      const semana  = row['SEMANA DEL PROGRAMA']||row['Sem. inicio']||'';
       const renov   = row['RENOVÓ']||row['RENOVO']||'';
-      const notas   = row['NOTAS CIERRE']||row['NOTAS']||'';
+      const notas   = row['NOTAS CIERRE']||row['Notas C']||row['NOTAS']||'';
       const {bx,label} = cierresBadge(renov);
       const av = bx==='bx-g'?'av-g':bx==='bx-r'?'av-r':'av-a';
       const meta = [dur,salida?'Sale: '+salida:'',semana,notas].filter(Boolean).join(' · ');
@@ -566,11 +589,11 @@ async function loadAll(){
   setStatus('idle','Cargando...');
 
   const [dDisp, dEq1, dEq2, dEq3, dAdh] = await Promise.all([
-    fetchCSV(URLS.disponibilidad),
-    fetchCSV(URLS.eq1_cierres),
-    fetchCSV(URLS.eq2_cierres),
-    fetchCSV(URLS.eq3_cierres),
-    fetchCSV(URLS.adherencia),
+    fetchCSV(URLS.disponibilidad, 'PROFESIONAL', 'PROFESIONAL'),
+    fetchCSV(URLS.eq1_cierres, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
+    fetchCSV(URLS.eq2_cierres, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
+    fetchCSV(URLS.eq3_cierres, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
+    fetchCSV(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
   ]);
 
   let errores = 0;
