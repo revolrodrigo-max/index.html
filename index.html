@@ -17,6 +17,7 @@
   --red:#EF4444;--rbg:rgba(239,68,68,.1);--rborder:rgba(239,68,68,.25);
   --blue:#3B82F6;--bbg:rgba(59,130,246,.1);--bborder:rgba(59,130,246,.25);
   --orange:#F97316;--obg:rgba(249,115,22,.1);--oborder:rgba(249,115,22,.25);
+  --purple:#8B5CF6;--pbg:rgba(139,92,246,.1);--pborder:rgba(139,92,246,.25);
   --r:8px;--r2:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -55,14 +56,15 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .eq-tab.all.active{background:var(--s3);color:var(--text);border-color:var(--border2)}
 .eq-content{display:none}.eq-content.active{display:block}
 
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.25rem}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:1.25rem}
 .mc{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;position:relative;overflow:hidden}
 .mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
 .mc.green::before{background:var(--green)}.mc.amber::before{background:var(--amber)}
 .mc.red::before{background:var(--red)}.mc.blue::before{background:var(--blue)}
+.mc.purple::before{background:var(--purple)}.mc.orange::before{background:var(--orange)}
 .mc-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;margin-bottom:4px}
 .mc-val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;line-height:1;letter-spacing:-1px}
-.mc-val.g{color:var(--green)}.mc-val.a{color:var(--amber)}.mc-val.r{color:var(--red)}.mc-val.b{color:var(--blue)}.mc-val.m{color:var(--muted2)}
+.mc-val.g{color:var(--green)}.mc-val.a{color:var(--amber)}.mc-val.r{color:var(--red)}.mc-val.b{color:var(--blue)}.mc-val.m{color:var(--muted2)}.mc-val.p{color:var(--purple)}.mc-val.o{color:var(--orange)}
 .mc-sub{font-size:11px;color:var(--muted);margin-top:4px}
 
 .section{margin-bottom:2rem}
@@ -82,8 +84,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .bx-g{background:var(--gbg);color:var(--green);border:1px solid var(--gborder)}
 .bx-b{background:var(--bbg);color:var(--blue);border:1px solid var(--bborder)}
 .bx-gr{background:var(--s2);color:var(--muted2);border:1px solid var(--border2)}
+.bx-p{background:var(--pbg);color:var(--purple);border:1px solid var(--pborder)}
+.bx-o{background:var(--obg);color:var(--orange);border:1px solid var(--oborder)}
 
-.prof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.prof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
 .prof-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:13px 15px;transition:border-color .15s}
 .prof-card:hover{border-color:var(--border2)}
 .prof-top{display:flex;align-items:center;gap:9px;margin-bottom:10px}
@@ -130,11 +134,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .ac-row i{font-size:13px;flex-shrink:0;margin-top:1px}
 .ac-resp{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-family:'DM Mono',monospace;color:var(--blue);background:var(--bbg);border:1px solid var(--bborder);padding:1px 6px;border-radius:20px;margin-top:3px}
 
-.info-box{background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;font-size:11px;color:var(--muted2);margin-bottom:1rem;display:flex;align-items:flex-start;gap:7px;line-height:1.5}
-.info-box i{font-size:14px;flex-shrink:0;margin-top:1px;color:var(--blue)}
-.info-box.warn i{color:var(--amber)}
-.info-box.err i{color:var(--red)}
-
 .eq-sep{display:flex;align-items:center;gap:8px;margin:1.25rem 0 .75rem;padding:8px 12px;border-radius:var(--r);font-family:'Syne',sans-serif;font-size:12px;font-weight:700}
 .eq-sep.eq1{background:var(--bbg);color:var(--blue);border:1px solid var(--bborder)}
 .eq-sep.eq2{background:var(--gbg);color:var(--green);border:1px solid var(--gborder)}
@@ -142,7 +141,6 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 .skeleton{background:var(--s2);border-radius:var(--r);height:44px;margin-bottom:6px;animation:pulse 1.5s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.8}}
-
 .empty-state{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-state i{font-size:32px;display:block;margin-bottom:10px;opacity:.4}
 .empty-state p{font-size:12px}
@@ -170,8 +168,9 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
       <i class="ti ti-refresh"></i> Actualizar
     </button>
     <div class="main-tabs">
-      <button class="main-tab active" onclick="showMain('disponibilidad',this)">Disponibilidad</button>
+      <button class="main-tab active" onclick="showMain('programa',this)">Programa</button>
       <button class="main-tab" onclick="showMain('cierres',this)">Cierres</button>
+      <button class="main-tab" onclick="showMain('disponibilidad',this)">Disponibilidad</button>
       <button class="main-tab" onclick="showMain('adherencia',this)">Adherencia</button>
     </div>
   </div>
@@ -179,22 +178,18 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 <div class="main">
 
-<!-- ══ DISPONIBILIDAD ══ -->
-<div id="page-disponibilidad" class="page active">
-  <div class="metrics" id="metricsDisp">
-    <div class="mc blue"><div class="mc-label">Horas libres totales</div><div class="mc-val b" id="m-libres">—</div><div class="mc-sub">Equipo completo</div></div>
-    <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g" id="m-agendadas">—</div><div class="mc-sub">Esta semana</div></div>
-    <div class="mc red"><div class="mc-label">Saturados</div><div class="mc-val r" id="m-saturados">—</div><div class="mc-sub">100% ocupación</div></div>
-    <div class="mc amber"><div class="mc-label">Ocupación promedio</div><div class="mc-val a" id="m-ocup">—</div><div class="mc-sub">Todos los equipos</div></div>
+<!-- ══ PROGRAMA (overview pacientes activos/pausa) ══ -->
+<div id="page-programa" class="page active">
+  <div class="eq-tabs">
+    <button class="eq-tab all active" onclick="showEq('programa','all',this)">Todos</button>
+    <button class="eq-tab eq1" onclick="showEq('programa','eq1',this)">Equipo 1</button>
+    <button class="eq-tab eq2" onclick="showEq('programa','eq2',this)">Equipo 2</button>
+    <button class="eq-tab eq3" onclick="showEq('programa','eq3',this)">Equipo 3</button>
   </div>
-  <div class="section">
-    <div class="sec-hdr">
-      <i class="ti ti-calendar-stats" style="color:var(--blue)"></i>
-      <span class="sec-title">Disponibilidad por profesional</span>
-      <span class="sec-badge sb-b" id="badge-disp">cargando...</span>
-    </div>
-    <div id="profGrid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
-  </div>
+  <div id="programa-all" class="eq-content active"></div>
+  <div id="programa-eq1" class="eq-content"></div>
+  <div id="programa-eq2" class="eq-content"></div>
+  <div id="programa-eq3" class="eq-content"></div>
 </div>
 
 <!-- ══ CIERRES ══ -->
@@ -205,57 +200,24 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     <button class="eq-tab eq2" onclick="showEq('cierres','eq2',this)">Equipo 2</button>
     <button class="eq-tab eq3" onclick="showEq('cierres','eq3',this)">Equipo 3</button>
   </div>
-  <!-- ALL -->
-  <div id="cierres-all" class="eq-content active">
-    <div class="metrics">
-      <div class="mc green"><div class="mc-label">Total cierres</div><div class="mc-val g" id="mc-total">—</div><div class="mc-sub">Todos los equipos</div></div>
-      <div class="mc green"><div class="mc-label">Renovaron</div><div class="mc-val g" id="mc-si">—</div><div class="mc-sub">Confirmados</div></div>
-      <div class="mc red"><div class="mc-label">No renovaron</div><div class="mc-val r" id="mc-no">—</div><div class="mc-sub">Churn</div></div>
-      <div class="mc amber"><div class="mc-label">Sin definir</div><div class="mc-val a" id="mc-pend">—</div><div class="mc-sub">En proceso</div></div>
-    </div>
-    <div class="section">
-      <div class="sec-hdr"><i class="ti ti-trophy" style="color:var(--green)"></i><span class="sec-title">Todos los cierres</span></div>
-      <div class="eq-sep eq1"><i class="ti ti-users" style="font-size:14px"></i>Equipo 1</div>
-      <div id="ct-all-eq1"><div class="skeleton"></div></div>
-      <div class="eq-sep eq2" style="margin-top:1rem"><i class="ti ti-users" style="font-size:14px"></i>Equipo 2</div>
-      <div id="ct-all-eq2"><div class="skeleton"></div></div>
-      <div class="eq-sep eq3" style="margin-top:1rem"><i class="ti ti-users" style="font-size:14px"></i>Equipo 3</div>
-      <div id="ct-all-eq3"><div class="skeleton"></div></div>
-    </div>
+  <div id="cierres-all" class="eq-content active"></div>
+  <div id="cierres-eq1" class="eq-content"></div>
+  <div id="cierres-eq2" class="eq-content"></div>
+  <div id="cierres-eq3" class="eq-content"></div>
+</div>
+
+<!-- ══ DISPONIBILIDAD ══ -->
+<div id="page-disponibilidad" class="page">
+  <div class="eq-tabs">
+    <button class="eq-tab all active" onclick="showEq('disponibilidad','all',this)">Todos</button>
+    <button class="eq-tab eq1" onclick="showEq('disponibilidad','eq1',this)">Equipo 1</button>
+    <button class="eq-tab eq2" onclick="showEq('disponibilidad','eq2',this)">Equipo 2</button>
+    <button class="eq-tab eq3" onclick="showEq('disponibilidad','eq3',this)">Equipo 3</button>
   </div>
-  <!-- EQ1 -->
-  <div id="cierres-eq1" class="eq-content">
-    <div class="metrics">
-      <div class="mc blue"><div class="mc-label">Cierres Eq.1</div><div class="mc-val b" id="mc1-total">—</div><div class="mc-sub">Esta semana</div></div>
-      <div class="mc green"><div class="mc-label">Renovaron</div><div class="mc-val g" id="mc1-si">—</div></div>
-      <div class="mc red"><div class="mc-label">No renovaron</div><div class="mc-val r" id="mc1-no">—</div></div>
-      <div class="mc amber"><div class="mc-label">Sin definir</div><div class="mc-val a" id="mc1-pend">—</div></div>
-    </div>
-    <div class="section"><div class="sec-hdr"><i class="ti ti-trophy" style="color:var(--blue)"></i><span class="sec-title">Cierres Equipo 1</span></div>
-    <div id="ct-solo-eq1"><div class="skeleton"></div></div></div>
-  </div>
-  <!-- EQ2 -->
-  <div id="cierres-eq2" class="eq-content">
-    <div class="metrics">
-      <div class="mc green"><div class="mc-label">Cierres Eq.2</div><div class="mc-val g" id="mc2-total">—</div><div class="mc-sub">Esta semana</div></div>
-      <div class="mc green"><div class="mc-label">Renovaron</div><div class="mc-val g" id="mc2-si">—</div></div>
-      <div class="mc red"><div class="mc-label">No renovaron</div><div class="mc-val r" id="mc2-no">—</div></div>
-      <div class="mc amber"><div class="mc-label">Sin definir</div><div class="mc-val a" id="mc2-pend">—</div></div>
-    </div>
-    <div class="section"><div class="sec-hdr"><i class="ti ti-trophy" style="color:var(--green)"></i><span class="sec-title">Cierres Equipo 2</span></div>
-    <div id="ct-solo-eq2"><div class="skeleton"></div></div></div>
-  </div>
-  <!-- EQ3 -->
-  <div id="cierres-eq3" class="eq-content">
-    <div class="metrics">
-      <div class="mc amber"><div class="mc-label">Cierres Eq.3</div><div class="mc-val a" id="mc3-total">—</div><div class="mc-sub">Esta semana</div></div>
-      <div class="mc green"><div class="mc-label">Renovaron</div><div class="mc-val g" id="mc3-si">—</div></div>
-      <div class="mc red"><div class="mc-label">No renovaron</div><div class="mc-val r" id="mc3-no">—</div></div>
-      <div class="mc amber"><div class="mc-label">Sin definir</div><div class="mc-val a" id="mc3-pend">—</div></div>
-    </div>
-    <div class="section"><div class="sec-hdr"><i class="ti ti-trophy" style="color:var(--amber)"></i><span class="sec-title">Cierres Equipo 3</span></div>
-    <div id="ct-solo-eq3"><div class="skeleton"></div></div></div>
-  </div>
+  <div id="disponibilidad-all" class="eq-content active"></div>
+  <div id="disponibilidad-eq1" class="eq-content"></div>
+  <div id="disponibilidad-eq2" class="eq-content"></div>
+  <div id="disponibilidad-eq3" class="eq-content"></div>
 </div>
 
 <!-- ══ ADHERENCIA ══ -->
@@ -266,58 +228,35 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     <button class="eq-tab eq2" onclick="showEq('adherencia','eq2',this)">Equipo 2</button>
     <button class="eq-tab eq3" onclick="showEq('adherencia','eq3',this)">Equipo 3</button>
   </div>
-  <div class="metrics">
-    <div class="mc red"><div class="mc-label">Críticos</div><div class="mc-val r" id="ma-critico">—</div><div class="mc-sub">Acción inmediata</div></div>
-    <div class="mc amber"><div class="mc-label">Moderados</div><div class="mc-val a" id="ma-moderado">—</div><div class="mc-sub">Seguimiento activo</div></div>
-    <div class="mc"><div class="mc-label">Monitoreo</div><div class="mc-val m" id="ma-monitoreo">—</div><div class="mc-sub">Vigilancia</div></div>
-    <div class="mc blue"><div class="mc-label">Total en riesgo</div><div class="mc-val b" id="ma-total">—</div><div class="mc-sub">Todos los equipos</div></div>
-  </div>
-  <!-- ALL -->
-  <div id="adherencia-all" class="eq-content active">
-    <div class="section">
-      <div class="sec-hdr"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i><span class="sec-title">Todos los pacientes en riesgo</span><span class="sec-badge sb-a" id="badge-adh">cargando...</span></div>
-      <div class="eq-sep eq1"><i class="ti ti-users" style="font-size:14px"></i>Equipo 1</div>
-      <div class="adh-list" id="adh-all-eq1"><div class="skeleton"></div><div class="skeleton"></div></div>
-      <div class="eq-sep eq2" style="margin-top:1.25rem"><i class="ti ti-users" style="font-size:14px"></i>Equipo 2</div>
-      <div class="adh-list" id="adh-all-eq2"><div class="skeleton"></div></div>
-      <div class="eq-sep eq3" style="margin-top:1.25rem"><i class="ti ti-users" style="font-size:14px"></i>Equipo 3</div>
-      <div class="adh-list" id="adh-all-eq3"><div class="skeleton"></div></div>
-    </div>
-  </div>
-  <!-- EQ1/2/3 individual -->
-  <div id="adherencia-eq1" class="eq-content">
-    <div class="section"><div class="sec-hdr"><i class="ti ti-alert-triangle" style="color:var(--blue)"></i><span class="sec-title">Equipo 1 — Pacientes en riesgo</span></div>
-    <div class="adh-list" id="adh-solo-eq1"></div></div>
-  </div>
-  <div id="adherencia-eq2" class="eq-content">
-    <div class="section"><div class="sec-hdr"><i class="ti ti-alert-triangle" style="color:var(--green)"></i><span class="sec-title">Equipo 2 — Pacientes en riesgo</span></div>
-    <div class="adh-list" id="adh-solo-eq2"></div></div>
-  </div>
-  <div id="adherencia-eq3" class="eq-content">
-    <div class="section"><div class="sec-hdr"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i><span class="sec-title">Equipo 3 — Pacientes en riesgo</span></div>
-    <div class="adh-list" id="adh-solo-eq3"></div></div>
-  </div>
+  <div id="adherencia-all" class="eq-content active"></div>
+  <div id="adherencia-eq1" class="eq-content"></div>
+  <div id="adherencia-eq2" class="eq-content"></div>
+  <div id="adherencia-eq3" class="eq-content"></div>
 </div>
 
 </div>
 <div class="footer">
-  <span>Testo Boost · Dashboard COO · Rodrigo</span>
+  <span>Testo Boost · Dashboard COO v3.0 · Rodrigo</span>
   <span id="fechaFooter"></span>
 </div>
 
 <script>
-/* ── URLs CSV ── */
+/* ═══════════════════════════════════════
+   CONFIG
+   ═══════════════════════════════════════ */
 const URLS = {
-  eq1_cierres:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=312678916&single=true&output=csv',
-  eq2_cierres:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=42305981&single=true&output=csv',
-  eq3_cierres:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=2141207433&single=true&output=csv',
-  adherencia:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=770594017&single=true&output=csv',
-  disponibilidad:'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=578212844&single=true&output=csv',
+  eq1: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=312678916&single=true&output=csv',
+  eq2: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=42305981&single=true&output=csv',
+  eq3: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=2141207433&single=true&output=csv',
+  adherencia: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=770594017&single=true&output=csv',
+  disponibilidad: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=578212844&single=true&output=csv',
 };
 
-/* ── CSV parser ── */
+/* ═══════════════════════════════════════
+   CSV PARSER — handles multiline, \r\n, decorative rows
+   ═══════════════════════════════════════ */
 function csvLines(txt){
-  const res=[]; let cur=''; let inQ=false;
+  const res=[]; let cur='',inQ=false;
   for(let i=0;i<txt.length;i++){
     const c=txt[i];
     if(c==='"') inQ=!inQ;
@@ -329,51 +268,70 @@ function csvLines(txt){
   if(cur) res.push(cur);
   return res;
 }
-function splitCSVLine(line){
-  const res=[]; let cur=''; let inQ=false;
+function splitCSV(line){
+  const res=[]; let cur='',inQ=false;
   for(let i=0;i<line.length;i++){
-    if(line[i]==='"'){inQ=!inQ;}
+    if(line[i]==='"') inQ=!inQ;
     else if(line[i]===','&&!inQ){res.push(cur);cur='';}
-    else{cur+=line[i];}
+    else cur+=line[i];
   }
   res.push(cur);
   return res;
 }
-function parseCSV(txt, requiredKey){
+function parseSheet(txt, headerMarker, requiredCol){
   const lines = csvLines(txt);
-  if(lines.length < 2) return [];
-  const headers = splitCSVLine(lines[0]);
-  return lines.slice(1).map(l=>{
-    const vals = splitCSVLine(l);
+  const hIdx = lines.findIndex(l => l.toUpperCase().includes(headerMarker.toUpperCase()));
+  if(hIdx < 0) return [];
+  const headers = splitCSV(lines[hIdx]).map(h => h.trim());
+  const rows = [];
+  for(let i = hIdx+1; i < lines.length; i++){
+    const vals = splitCSV(lines[i]);
     const obj = {};
-    headers.forEach((h,i)=>{ obj[h.trim()] = (vals[i]||'').trim(); });
-    return obj;
-  }).filter(r=>{
-    if(!Object.values(r).some(v=>v)) return false;
-    if(requiredKey && !r[requiredKey]) return false;
-    return true;
-  });
+    headers.forEach((h,idx) => { if(h) obj[h] = (vals[idx]||'').trim(); });
+    if(requiredCol && !obj[requiredCol]) continue;
+    if(!Object.values(obj).some(v=>v)) continue;
+    rows.push(obj);
+  }
+  return rows;
 }
-async function fetchCSV(url, headerMarker, requiredKey){
+async function fetchSheet(url, headerMarker, requiredCol){
   try{
     const r = await fetch(url+'&cachebust='+Date.now());
-    if(!r.ok) return null;
-    let txt = await r.text();
-    if(headerMarker){
-      const lines = csvLines(txt);
-      const idx = lines.findIndex(l => l.toUpperCase().includes(headerMarker));
-      if(idx >= 0) txt = lines.slice(idx).join('\n');
-    }
-    return parseCSV(txt, requiredKey);
-  }catch(e){ return null; }
+    if(!r.ok) return [];
+    return parseSheet(await r.text(), headerMarker, requiredCol);
+  }catch(e){ return []; }
 }
 
-/* ── Helpers ── */
-function initials(n){ return (n||'').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?'; }
+/* ═══════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════ */
 function g(id){ return document.getElementById(id); }
+function initials(n){ return (n||'').split(' ').slice(0,2).map(w=>(w||'')[0]||'').join('').toUpperCase()||'?'; }
+function parseDate(str){
+  if(!str) return null;
+  const p = str.split('/');
+  if(p.length!==3) return null;
+  return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+}
+function getWeekRange(){
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate() - (day===0?6:day-1)); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  return {start:mon, end:sun};
+}
+function getMonthRange(){
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth()+1, 0, 23,59,59,999);
+  return {start, end};
+}
+function inRange(dateStr, range){
+  const d = parseDate(dateStr);
+  return d && d >= range.start && d <= range.end;
+}
 function setStatus(state, txt){
-  const dot = g('statusDot');
-  dot.className = 'status-dot ' + (state==='ok'?'dot-ok':state==='warn'?'dot-warn':state==='err'?'dot-err':'dot-idle');
+  g('statusDot').className = 'status-dot '+(state==='ok'?'dot-ok':state==='warn'?'dot-warn':state==='err'?'dot-err':'dot-idle');
   g('statusTxt').textContent = txt;
 }
 function setLoading(on){
@@ -381,275 +339,359 @@ function setLoading(on){
   btn.disabled = on;
   btn.classList.toggle('loading', on);
 }
+function emptyState(msg){ return `<div class="empty-state"><i class="ti ti-inbox"></i><p>${msg}</p></div>`; }
 
-/* ── DISPONIBILIDAD ── */
-function renderDisp(data){
-  if(!data||!data.length){
-    g('profGrid').innerHTML = emptyState('Sin datos en la hoja DISPONIBILIDAD.');
-    return;
+/* ═══════════════════════════════════════
+   RENDER: PROGRAMA (pacientes activos / pausa)
+   ═══════════════════════════════════════ */
+function renderPrograma(allEq){
+  const week = getWeekRange();
+  const month = getMonthRange();
+
+  function statsFor(rows){
+    const activos = rows.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO');
+    const pausa = rows.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA'));
+    const total = rows.length;
+    const cierresSemana = rows.filter(r=>inRange(r.FIN, week));
+    const cierresMes = rows.filter(r=>inRange(r.FIN, month));
+    return {total, activos:activos.length, pausa:pausa.length, cierresSemana:cierresSemana.length, cierresMes:cierresMes.length, rowsCierresSemana:cierresSemana, rowsCierresMes:cierresMes};
   }
-  const sorted = [...data].sort((a,b)=>{
-    const pA = parseFloat((a['OCUP. %']||a['OCUPACIÓN %']||'0').replace('%',''))||0;
-    const pB = parseFloat((b['OCUP. %']||b['OCUPACIÓN %']||'0').replace('%',''))||0;
-    return pB - pA;
-  });
-  let totalLib=0, totalAg=0, saturados=0, sumOcup=0, count=0;
-  sorted.forEach(p=>{
-    const lib = parseInt(p['LIBRES']||p['HORAS LIBRES']||p['hLibres']||0)||0;
-    const ag  = parseInt(p['AGENDADAS']||p['agendadas']||0)||0;
-    const pct = parseFloat((p['OCUP. %']||p['OCUPACIÓN %']||'0').replace('%',''))||0;
-    totalLib+=lib; totalAg+=ag; sumOcup+=pct; count++;
-    if(pct>=99) saturados++;
-  });
-  const promOcup = count>0 ? Math.round(sumOcup/count) : 0;
-  g('m-libres').textContent = totalLib+'h';
-  g('m-agendadas').textContent = totalAg;
-  g('m-saturados').textContent = saturados;
-  g('m-ocup').textContent = promOcup+'%';
-  g('badge-disp').textContent = sorted.length+' profesionales';
 
-  g('profGrid').innerHTML = sorted.map(p=>{
-    const nombre = p['PROFESIONAL']||p['nombre']||'—';
-    const rol    = p['ROL']||p['rol']||'';
-    const equipo = p['EQUIPO']||p['equipo']||'';
-    const ag     = parseInt(p['AGENDADAS']||p['agendadas']||0)||0;
-    const lib    = parseInt(p['LIBRES']||p['HORAS LIBRES']||p['hLibres']||0)||0;
-    const tot    = parseInt(p['CAP. MÁX']||p['CAPACIDAD']||p['hTotal']||0)||0;
-    const pct    = parseFloat((p['OCUP. %']||p['OCUPACIÓN %']||'0').replace('%',''))||0;
-    const pctR   = Math.min(Math.round(pct),100);
-    const bc  = pct>=90?'bar-danger':pct>=65?'bar-warn':'bar-ok';
-    const bx  = pct>=90?'bx-r':pct>=65?'bx-a':'bx-g';
-    const bl  = pct>=99?'Saturado':pct>=90?'Saturado':pct>=65?'Alta demanda':pct>=30?'Media':'Disponible';
-    const vc  = pct>=90?'var(--red)':pct>=65?'var(--amber)':'var(--green)';
-    const av  = pct>=90?'av-r':pct>=65?'av-a':'av-g';
-    return `<div class="prof-card">
-      <div class="prof-top">
-        <div class="av ${av}">${initials(nombre)}</div>
-        <div style="flex:1"><div class="prof-name">${nombre}</div><div class="prof-role">${rol}${equipo?' · '+equipo:''}</div></div>
-        <span class="badge ${bx}">${bl}</span>
-      </div>
-      <div class="bar-wrap"><div class="bar-fill ${bc}" style="width:${pctR}%"></div></div>
-      <div class="prof-nums">
-        <div class="pn"><div class="pn-val" style="color:var(--blue)">${ag}</div><div class="pn-lbl">agend.</div></div>
-        <div class="pn"><div class="pn-val" style="color:var(--green)">${lib}</div><div class="pn-lbl">libres</div></div>
-        <div class="pn"><div class="pn-val" style="color:var(--muted2)">${tot||'—'}</div><div class="pn-lbl">cap.máx</div></div>
-        <div class="pn"><div class="pn-val" style="color:${vc}">${pctR}%</div><div class="pn-lbl">ocup.</div></div>
-      </div>
+  function metricsHTML(s, label){
+    return `<div class="metrics">
+      <div class="mc blue"><div class="mc-label">Total pacientes</div><div class="mc-val b">${s.total}</div><div class="mc-sub">${label}</div></div>
+      <div class="mc green"><div class="mc-label">Activos</div><div class="mc-val g">${s.activos}</div><div class="mc-sub">En programa</div></div>
+      <div class="mc amber"><div class="mc-label">En pausa</div><div class="mc-val a">${s.pausa}</div><div class="mc-sub">Pausados</div></div>
+      <div class="mc orange"><div class="mc-label">Cierres semana</div><div class="mc-val o">${s.cierresSemana}</div><div class="mc-sub">Semana actual</div></div>
+      <div class="mc purple"><div class="mc-label">Cierres mes</div><div class="mc-val p">${s.cierresMes}</div><div class="mc-sub">Mes actual</div></div>
     </div>`;
-  }).join('');
+  }
+
+  function pausaListHTML(rows){
+    const pausa = rows.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA'));
+    if(!pausa.length) return '';
+    return `<div class="section"><div class="sec-hdr"><i class="ti ti-player-pause" style="color:var(--amber)"></i><span class="sec-title">Pacientes en pausa</span><span class="sec-badge sb-a">${pausa.length}</span></div>
+      <div class="ct-table">${pausa.map(r=>{
+        const nombre = r['NOMBRE COMPLETO']||'—';
+        const dur = r.DURACION||'';
+        const sem = r['SEMANA DEL PROGRAMA']||'';
+        return `<div class="ct-row">
+          <div class="ct-av av-a">${initials(nombre)}</div>
+          <div class="ct-info"><div class="ct-name">${nombre}</div><div class="ct-meta">${[dur,sem].filter(Boolean).join(' · ')}</div></div>
+          <span class="badge bx-a">En pausa</span>
+        </div>`;
+      }).join('')}</div></div>`;
+  }
+
+  // ALL
+  const allRows = [...allEq[0].rows, ...allEq[1].rows, ...allEq[2].rows];
+  const sAll = statsFor(allRows);
+  let allHTML = metricsHTML(sAll, 'Todos los equipos');
+  allEq.forEach((eq, i) => {
+    const s = statsFor(eq.rows);
+    allHTML += `<div class="eq-sep eq${i+1}"><i class="ti ti-users" style="font-size:14px"></i>${eq.label} — ${s.activos} activos · ${s.pausa} pausa · ${s.cierresSemana} cierres semana</div>`;
+  });
+  allHTML += pausaListHTML(allRows);
+  g('programa-all').innerHTML = allHTML;
+
+  // Per equipo
+  allEq.forEach((eq, i) => {
+    const s = statsFor(eq.rows);
+    let html = metricsHTML(s, eq.label);
+    html += pausaListHTML(eq.rows);
+    g('programa-eq'+(i+1)).innerHTML = html;
+  });
 }
 
-/* ── CIERRES ── */
-function cierresBadge(renov){
-  const r = (renov||'').toUpperCase();
-  if(r==='SÍ'||r==='SI') return {bx:'bx-g',label:'Renovó'};
-  if(r==='NO') return {bx:'bx-r',label:'No renovó'};
-  return {bx:'bx-a',label:'En proceso'};
-}
-function renderCierresEq(data, ids, mcIds){
-  const total = data.length;
-  const si    = data.filter(r=>{const v=(r['RENOVÓ']||r['RENOVO']||'').toUpperCase();return v==='SÍ'||v==='SI';}).length;
-  const no    = data.filter(r=>(r['RENOVÓ']||r['RENOVO']||'').toUpperCase()==='NO').length;
-  const pend  = total - si - no;
+/* ═══════════════════════════════════════
+   RENDER: CIERRES (solo pacientes con FIN en semana/mes actual)
+   ═══════════════════════════════════════ */
+function renderCierres(allEq){
+  const week = getWeekRange();
+  const month = getMonthRange();
 
-  ids.forEach(id=>{
-    const el = g(id);
-    if(!el) return;
-    if(!total){
-      el.innerHTML = `<div class="ct-table">${emptyRow('Sin cierres cargados.')}</div>`;
-      return;
-    }
-    el.innerHTML = `<div class="ct-table">${data.map(row=>{
-      const nombre  = row['NOMBRE COMPLETO']||row['NOMBRE']||row['nombre']||'—';
-      const salida  = row['SALIDA']||row['FIN']||row['salida']||row['Fecha Cierre']||'';
-      const dur     = row['DURACIÓN']||row['DURACION']||row['duracion']||'';
-      const semana  = row['SEMANA DEL PROGRAMA']||row['Sem. inicio']||'';
-      const renov   = row['RENOVÓ']||row['RENOVO']||'';
-      const notas   = row['NOTAS CIERRE']||row['Notas C']||row['NOTAS']||'';
-      const {bx,label} = cierresBadge(renov);
-      const av = bx==='bx-g'?'av-g':bx==='bx-r'?'av-r':'av-a';
-      const meta = [dur,salida?'Sale: '+salida:'',semana,notas].filter(Boolean).join(' · ');
+  function cierresBadge(renov){
+    const r = (renov||'').toUpperCase();
+    if(r==='SI'||r==='SÍ') return {bx:'bx-g',av:'av-g',label:'Renovó'};
+    if(r==='NO') return {bx:'bx-r',av:'av-r',label:'No renovó'};
+    return {bx:'bx-a',av:'av-a',label:'En proceso'};
+  }
+
+  function cierreTable(rows){
+    if(!rows.length) return emptyState('Sin cierres en este periodo.');
+    return `<div class="ct-table">${rows.map(r=>{
+      const nombre = r['NOMBRE COMPLETO']||'—';
+      const fin = r.FIN||'';
+      const dur = r.DURACION||'';
+      const sem = r['SEMANA DEL PROGRAMA']||'';
+      const renov = r['RENOVÓ']||r.RENOVO||'';
+      const notas = r['Notas Cierre']||r['NOTAS CIERRE']||r.NOTAS||'';
+      const {bx,av,label} = cierresBadge(renov);
+      const meta = [dur, fin?'Cierre: '+fin:'', sem, notas].filter(Boolean).join(' · ');
       return `<div class="ct-row">
         <div class="ct-av ${av}">${initials(nombre)}</div>
         <div class="ct-info"><div class="ct-name">${nombre}</div><div class="ct-meta">${meta||'—'}</div></div>
         <span class="badge ${bx}">${label}</span>
       </div>`;
     }).join('')}</div>`;
-  });
-
-  if(mcIds){
-    g(mcIds+'-total')&&(g(mcIds+'-total').textContent=total);
-    g(mcIds+'-si')&&(g(mcIds+'-si').textContent=si);
-    g(mcIds+'-no')&&(g(mcIds+'-no').textContent=no);
-    g(mcIds+'-pend')&&(g(mcIds+'-pend').textContent=pend);
   }
-  return {total,si,no,pend};
-}
-function renderCierresAll(d1,d2,d3){
-  const t = (d1.total||0)+(d2.total||0)+(d3.total||0);
-  const si= (d1.si||0)+(d2.si||0)+(d3.si||0);
-  const no= (d1.no||0)+(d2.no||0)+(d3.no||0);
-  const p = t-si-no;
-  g('mc-total').textContent=t;
-  g('mc-si').textContent=si;
-  g('mc-no').textContent=no;
-  g('mc-pend').textContent=p;
+
+  function cierresBlock(rows, label){
+    const cSem = rows.filter(r=>inRange(r.FIN, week));
+    const cMes = rows.filter(r=>inRange(r.FIN, month));
+    const siSem = cSem.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SÍ'||v==='SI';}).length;
+    const noSem = cSem.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
+    const pendSem = cSem.length - siSem - noSem;
+    const siMes = cMes.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SÍ'||v==='SI';}).length;
+    const noMes = cMes.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
+
+    return `<div class="metrics">
+      <div class="mc orange"><div class="mc-label">Cierres semana</div><div class="mc-val o">${cSem.length}</div><div class="mc-sub">${label}</div></div>
+      <div class="mc green"><div class="mc-label">Renovaron (sem)</div><div class="mc-val g">${siSem}</div></div>
+      <div class="mc red"><div class="mc-label">No renovaron (sem)</div><div class="mc-val r">${noSem}</div></div>
+      <div class="mc amber"><div class="mc-label">Pendientes (sem)</div><div class="mc-val a">${pendSem}</div></div>
+      <div class="mc purple"><div class="mc-label">Cierres mes</div><div class="mc-val p">${cMes.length}</div><div class="mc-sub">Renovaron: ${siMes} · No: ${noMes}</div></div>
+    </div>
+    <div class="section">
+      <div class="sec-hdr"><i class="ti ti-calendar-event" style="color:var(--orange)"></i><span class="sec-title">Cierres de la semana</span><span class="sec-badge sb-a">${cSem.length} pacientes</span></div>
+      ${cierreTable(cSem)}
+    </div>
+    <div class="section">
+      <div class="sec-hdr"><i class="ti ti-calendar-month" style="color:var(--purple)"></i><span class="sec-title">Cierres del mes</span><span class="sec-badge sb-gr">${cMes.length} pacientes</span></div>
+      ${cierreTable(cMes)}
+    </div>`;
+  }
+
+  // ALL
+  const allRows = [...allEq[0].rows, ...allEq[1].rows, ...allEq[2].rows];
+  let allHTML = cierresBlock(allRows, 'Todos los equipos');
+  g('cierres-all').innerHTML = allHTML;
+
+  allEq.forEach((eq, i) => {
+    g('cierres-eq'+(i+1)).innerHTML = cierresBlock(eq.rows, eq.label);
+  });
 }
 
-/* ── ADHERENCIA ── */
-function nivelConfig(nivel){
-  const n=(nivel||'').toLowerCase();
-  if(n.includes('crít')) return {rs:'rs-r',bx:'bx-r',label:'Crítico'};
-  if(n.includes('moder')) return {rs:'rs-a',bx:'bx-a',label:'Moderado'};
-  if(n.includes('bajo')) return {rs:'rs-a',bx:'bx-a',label:'Bajo avance'};
-  return {rs:'rs-gr',bx:'bx-gr',label:'Monitoreo'};
-}
-function adhCardHTML(row, id){
-  const nombre    = row['NOMBRE PACIENTE']||row['PACIENTE']||'—';
-  const nivel     = row['NIVEL RIESGO']||row['NIVEL']||'';
-  const tipo      = row['TIPO PROBLEMA']||'';
-  const ctx       = row['CONTEXTO / SITUACIÓN']||row['CONTEXTO']||'';
-  const accion    = row['ACCIONABLE PRINCIPAL']||row['ACCIONABLE']||'';
-  const resp      = row['RESPONSABLE ACCIONABLE']||row['RESPONSABLE']||'—';
-  const estado    = row['ESTADO ACCIONABLE']||row['ESTADO']||'PENDIENTE';
-  const fecha     = row['FECHA LÍMITE']||row['FECHA']||'';
-  const {rs,bx,label} = nivelConfig(nivel);
-  const sub = [tipo,fecha?'Límite: '+fecha:'',estado].filter(Boolean).join(' · ');
-  return `<div class="adh-card" id="${id}">
-    <div class="adh-hdr" onclick="toggleAdh('${id}')">
-      <div class="risk-stripe ${rs}"></div>
-      <div class="adh-name-block">
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-          <span class="adh-name">${nombre}</span>
-          <span class="badge ${bx}">${label}</span>
-        </div>
-        <div class="adh-sub">${sub||'Sin descripción'}</div>
+/* ═══════════════════════════════════════
+   RENDER: DISPONIBILIDAD
+   ═══════════════════════════════════════ */
+function renderDisp(data){
+  function profCard(p){
+    const nombre = p.PROFESIONAL||'—';
+    const rol = p.ROL||'';
+    const ag = parseInt(p.AGENDADAS||0)||0;
+    const lib = parseInt(p.LIBRES||0)||0;
+    const tot = parseInt(p['CAP. MÁX']||0)||0;
+    const pct = parseFloat((p['OCUP. %']||'0').replace('%',''))||0;
+    const pctR = Math.min(Math.round(pct),100);
+    const bc = pct>=90?'bar-danger':pct>=65?'bar-warn':'bar-ok';
+    const bx = pct>=90?'bx-r':pct>=65?'bx-a':'bx-g';
+    const bl = pct>=99?'Saturado':pct>=90?'Alta':pct>=65?'Media':pct>=30?'Baja':'Disponible';
+    const vc = pct>=90?'var(--red)':pct>=65?'var(--amber)':'var(--green)';
+    const av = pct>=90?'av-r':pct>=65?'av-a':'av-g';
+    return `<div class="prof-card">
+      <div class="prof-top">
+        <div class="av ${av}">${initials(nombre)}</div>
+        <div style="flex:1"><div class="prof-name">${nombre}</div><div class="prof-role">${rol}</div></div>
+        <span class="badge ${bx}">${bl}</span>
       </div>
-      <i class="ti ti-chevron-down adh-chevron"></i>
+      <div class="bar-wrap"><div class="bar-fill ${bc}" style="width:${pctR}%"></div></div>
+      <div class="prof-nums">
+        <div class="pn"><div class="pn-val" style="color:var(--blue)">${ag}</div><div class="pn-lbl">agend.</div></div>
+        <div class="pn"><div class="pn-val" style="color:var(--green)">${lib}</div><div class="pn-lbl">libres</div></div>
+        <div class="pn"><div class="pn-val" style="color:var(--muted2)">${tot||'—'}</div><div class="pn-lbl">cap.max</div></div>
+        <div class="pn"><div class="pn-val" style="color:${vc}">${pctR}%</div><div class="pn-lbl">ocup.</div></div>
+      </div>
+    </div>`;
+  }
+
+  function dispBlock(profs, label){
+    const sorted = [...profs].sort((a,b)=>{
+      return (parseFloat((b['OCUP. %']||'0').replace('%',''))||0) - (parseFloat((a['OCUP. %']||'0').replace('%',''))||0);
+    });
+    let totalLib=0, totalAg=0, saturados=0, sumOcup=0;
+    sorted.forEach(p=>{
+      const lib = parseInt(p.LIBRES||0)||0;
+      const ag = parseInt(p.AGENDADAS||0)||0;
+      const pct = parseFloat((p['OCUP. %']||'0').replace('%',''))||0;
+      totalLib+=lib; totalAg+=ag; sumOcup+=pct;
+      if(pct>=99) saturados++;
+    });
+    const promOcup = sorted.length>0 ? Math.round(sumOcup/sorted.length) : 0;
+    return `<div class="metrics">
+      <div class="mc blue"><div class="mc-label">Horas libres</div><div class="mc-val b">${totalLib}h</div><div class="mc-sub">${label}</div></div>
+      <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g">${totalAg}</div></div>
+      <div class="mc red"><div class="mc-label">Saturados</div><div class="mc-val r">${saturados}</div><div class="mc-sub">100% ocupación</div></div>
+      <div class="mc amber"><div class="mc-label">Ocupación promedio</div><div class="mc-val a">${promOcup}%</div></div>
     </div>
-    <div class="adh-body">
-      ${ctx?`<div class="adh-ctx">${ctx}</div>`:''}
-      <div class="ac-list">
-        <div class="ac-row">
+    <div class="section">
+      <div class="sec-hdr"><i class="ti ti-calendar-stats" style="color:var(--blue)"></i><span class="sec-title">Profesionales</span><span class="sec-badge sb-b">${sorted.length} profesionales</span></div>
+      <div class="prof-grid">${sorted.length ? sorted.map(profCard).join('') : emptyState('Sin datos de disponibilidad.')}</div>
+    </div>`;
+  }
+
+  const eq1 = data.filter(p=>(p.EQUIPO||'').includes('1'));
+  const eq2 = data.filter(p=>(p.EQUIPO||'').includes('2'));
+  const eq3 = data.filter(p=>(p.EQUIPO||'').includes('3'));
+
+  // ALL — show segmented
+  let allHTML = dispBlock(data, 'Todos los equipos');
+  g('disponibilidad-all').innerHTML = allHTML;
+  g('disponibilidad-eq1').innerHTML = dispBlock(eq1, 'Equipo 1');
+  g('disponibilidad-eq2').innerHTML = dispBlock(eq2, 'Equipo 2');
+  g('disponibilidad-eq3').innerHTML = dispBlock(eq3, 'Equipo 3');
+}
+
+/* ═══════════════════════════════════════
+   RENDER: ADHERENCIA
+   ═══════════════════════════════════════ */
+function renderAdh(data){
+  function nivelConfig(nivel){
+    const n=(nivel||'').toLowerCase();
+    if(n.includes('crít')||n.includes('crit')) return {rs:'rs-r',bx:'bx-r',label:'Crítico'};
+    if(n.includes('moder')) return {rs:'rs-a',bx:'bx-a',label:'Moderado'};
+    if(n.includes('bajo')) return {rs:'rs-a',bx:'bx-a',label:'Bajo avance'};
+    return {rs:'rs-gr',bx:'bx-gr',label:'Monitoreo'};
+  }
+  function adhCard(row, id){
+    const nombre = row['NOMBRE PACIENTE']||row.PACIENTE||'—';
+    const nivel = row['NIVEL RIESGO']||row.NIVEL||'';
+    const tipo = row['TIPO PROBLEMA']||'';
+    const ctx = row['CONTEXTO / SITUACIÓN']||row.CONTEXTO||'';
+    const accion = row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
+    const resp = row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'—';
+    const estado = row['ESTADO ACCIONABLE']||row.ESTADO||'PENDIENTE';
+    const fecha = row['FECHA LÍMITE']||row.FECHA||'';
+    const {rs,bx,label} = nivelConfig(nivel);
+    const sub = [tipo, fecha?'Límite: '+fecha:'', estado].filter(Boolean).join(' · ');
+    return `<div class="adh-card" id="${id}">
+      <div class="adh-hdr" onclick="this.parentElement.classList.toggle('open')">
+        <div class="risk-stripe ${rs}"></div>
+        <div class="adh-name-block">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+            <span class="adh-name">${nombre}</span>
+            <span class="badge ${bx}">${label}</span>
+          </div>
+          <div class="adh-sub">${sub||'Sin descripción'}</div>
+        </div>
+        <i class="ti ti-chevron-down adh-chevron"></i>
+      </div>
+      <div class="adh-body">
+        ${ctx?`<div class="adh-ctx">${ctx}</div>`:''}
+        <div class="ac-list"><div class="ac-row">
           <i class="ti ti-arrow-right" style="color:var(--blue)"></i>
           <div>${accion||'Sin accionable registrado'}
             <div><span class="ac-resp"><i class="ti ti-user" style="font-size:9px"></i>${resp}</span></div>
           </div>
-        </div>
+        </div></div>
       </div>
+    </div>`;
+  }
+
+  function adhBlock(rows, label){
+    const count = (arr,kw) => arr.filter(r=>(r['NIVEL RIESGO']||'').toLowerCase().includes(kw)).length;
+    const criticos = count(rows,'crít') + count(rows,'crit');
+    const moderados = count(rows,'moder') + count(rows,'bajo');
+    const monit = Math.max(rows.length - criticos - moderados, 0);
+    return `<div class="metrics">
+      <div class="mc red"><div class="mc-label">Críticos</div><div class="mc-val r">${criticos}</div><div class="mc-sub">Acción inmediata</div></div>
+      <div class="mc amber"><div class="mc-label">Moderados</div><div class="mc-val a">${moderados}</div><div class="mc-sub">Seguimiento activo</div></div>
+      <div class="mc"><div class="mc-label">Monitoreo</div><div class="mc-val m">${monit}</div><div class="mc-sub">Vigilancia</div></div>
+      <div class="mc blue"><div class="mc-label">Total en riesgo</div><div class="mc-val b">${rows.length}</div><div class="mc-sub">${label}</div></div>
     </div>
-  </div>`;
-}
-function renderAdh(data){
-  const eq1 = data.filter(r=>(r['EQUIPO']||'').includes('1'));
-  const eq2 = data.filter(r=>(r['EQUIPO']||'').includes('2'));
-  const eq3 = data.filter(r=>(r['EQUIPO']||'').includes('3'));
-
-  const count = (arr,kw) => arr.filter(r=>(r['NIVEL RIESGO']||'').toLowerCase().includes(kw)).length;
-  const criticos  = count(data,'crít');
-  const moderados = count(data,'moder')+count(data,'bajo');
-  const monit     = data.length - criticos - moderados;
-  g('ma-critico').textContent  = criticos;
-  g('ma-moderado').textContent = moderados;
-  g('ma-monitoreo').textContent= Math.max(monit,0);
-  g('ma-total').textContent    = data.length;
-  g('badge-adh').textContent   = data.length+' pacientes';
-
-  function renderList(arr, prefix, containerIds){
-    const html = arr.length
-      ? arr.map((r,i)=>adhCardHTML(r,`${prefix}-${i}`)).join('')
-      : emptyState('Sin pacientes en riesgo registrados para este equipo.');
-    containerIds.forEach(id=>{ const el=g(id); if(el) el.innerHTML=html; });
-    // Auto-abrir críticos
-    arr.forEach((r,i)=>{
-      if((r['NIVEL RIESGO']||'').toLowerCase().includes('crít')){
-        const el=g(`${prefix}-${i}`);if(el) el.classList.add('open');
-      }
-    });
+    <div class="section">
+      <div class="sec-hdr"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i><span class="sec-title">Pacientes en riesgo</span><span class="sec-badge sb-a">${rows.length} pacientes</span></div>
+      <div class="adh-list">${rows.length ? rows.map((r,i)=>{
+        const card = adhCard(r, 'adh-'+label.replace(/\s/g,'')+'-'+i);
+        return card;
+      }).join('') : emptyState('Sin pacientes en riesgo.')}</div>
+    </div>`;
   }
 
-  renderList(eq1,'adh-eq1',['adh-all-eq1','adh-solo-eq1']);
-  renderList(eq2,'adh-eq2',['adh-all-eq2','adh-solo-eq2']);
-  renderList(eq3,'adh-eq3',['adh-all-eq3','adh-solo-eq3']);
+  const eq1 = data.filter(r=>(r.EQUIPO||'').includes('1'));
+  const eq2 = data.filter(r=>(r.EQUIPO||'').includes('2'));
+  const eq3 = data.filter(r=>(r.EQUIPO||'').includes('3'));
+
+  g('adherencia-all').innerHTML = adhBlock(data, 'Todos los equipos');
+  g('adherencia-eq1').innerHTML = adhBlock(eq1, 'Equipo 1');
+  g('adherencia-eq2').innerHTML = adhBlock(eq2, 'Equipo 2');
+  g('adherencia-eq3').innerHTML = adhBlock(eq3, 'Equipo 3');
+
+  // Auto-open criticos
+  data.forEach((r,i)=>{
+    if((r['NIVEL RIESGO']||'').toLowerCase().includes('crít')){
+      const el = document.getElementById('adh-Todoslosequipos-'+i);
+      if(el) el.classList.add('open');
+    }
+  });
 }
 
-function toggleAdh(id){ g(id)?.classList.toggle('open'); }
-
-/* ── EMPTY STATES ── */
-function emptyState(msg){
-  return `<div class="empty-state"><i class="ti ti-inbox"></i><p>${msg}</p></div>`;
-}
-function emptyRow(msg){
-  return `<div class="ct-table"><div class="ct-row"><div style="color:var(--muted);font-size:12px">${msg}</div></div></div>`;
-}
-
-/* ── LOAD ALL ── */
-async function loadAll(){
-  setLoading(true);
-  setStatus('idle','Cargando...');
-
-  const [dDisp, dEq1, dEq2, dEq3, dAdh] = await Promise.all([
-    fetchCSV(URLS.disponibilidad, 'PROFESIONAL', 'PROFESIONAL'),
-    fetchCSV(URLS.eq1_cierres, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
-    fetchCSV(URLS.eq2_cierres, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
-    fetchCSV(URLS.eq3_cierres, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
-    fetchCSV(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
-  ]);
-
-  let errores = 0;
-
-  // Disponibilidad
-  if(dDisp){ renderDisp(dDisp); }
-  else { g('profGrid').innerHTML = emptyState('No se pudo cargar la hoja DISPONIBILIDAD.'); errores++; }
-
-  // Cierres
-  const r1 = renderCierresEq(dEq1||[], ['ct-all-eq1','ct-solo-eq1'], 'mc1');
-  const r2 = renderCierresEq(dEq2||[], ['ct-all-eq2','ct-solo-eq2'], 'mc2');
-  const r3 = renderCierresEq(dEq3||[], ['ct-all-eq3','ct-solo-eq3'], 'mc3');
-  renderCierresAll(r1,r2,r3);
-  if(!dEq1&&!dEq2&&!dEq3) errores++;
-
-  // Adherencia
-  if(dAdh && dAdh.length){ renderAdh(dAdh); }
-  else {
-    ['adh-all-eq1','adh-solo-eq1','adh-all-eq2','adh-solo-eq2','adh-all-eq3','adh-solo-eq3'].forEach(id=>{
-      const el=g(id); if(el) el.innerHTML=emptyState('Sin datos en la hoja ADHERENCIA.');
-    });
-    g('ma-critico').textContent=g('ma-moderado').textContent=g('ma-monitoreo').textContent=g('ma-total').textContent='0';
-    if(!dAdh) errores++;
-  }
-
-  const ahora = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-  if(errores===0){
-    setStatus('ok',`Actualizado ${ahora}`);
-  } else if(errores<5){
-    setStatus('warn',`Parcial ${ahora}`);
-  } else {
-    setStatus('err','Error al cargar');
-  }
-  g('fechaFooter').textContent = `Actualizado: ${new Date().toLocaleDateString('es-AR')} ${ahora}`;
-  setLoading(false);
-}
-
-/* ── NAV ── */
-function showMain(name,btn){
+/* ═══════════════════════════════════════
+   NAV
+   ═══════════════════════════════════════ */
+function showMain(name, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.main-tab').forEach(t=>t.classList.remove('active'));
   g('page-'+name).classList.add('active');
   btn.classList.add('active');
 }
-function showEq(section,eq,btn){
-  document.querySelectorAll(`#page-${section} .eq-content`).forEach(c=>c.classList.remove('active'));
-  document.querySelectorAll(`#page-${section} .eq-tab`).forEach(t=>t.classList.remove('active'));
+function showEq(section, eq, btn){
+  document.querySelectorAll('#page-'+section+' .eq-content').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('#page-'+section+' .eq-tab').forEach(t=>t.classList.remove('active'));
   g(section+'-'+eq).classList.add('active');
   btn.classList.add('active');
 }
 
-/* ── INIT ── */
+/* ═══════════════════════════════════════
+   LOAD ALL
+   ═══════════════════════════════════════ */
+async function loadAll(){
+  setLoading(true);
+  setStatus('idle','Cargando...');
+  let errores = 0;
+
+  const [dEq1, dEq2, dEq3, dDisp, dAdh] = await Promise.all([
+    fetchSheet(URLS.eq1, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
+    fetchSheet(URLS.eq2, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
+    fetchSheet(URLS.eq3, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
+    fetchSheet(URLS.disponibilidad, 'PROFESIONAL', 'PROFESIONAL'),
+    fetchSheet(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
+  ]);
+
+  const allEq = [
+    {label:'Equipo 1', rows:dEq1},
+    {label:'Equipo 2', rows:dEq2},
+    {label:'Equipo 3', rows:dEq3}
+  ];
+
+  // Programa
+  try{ renderPrograma(allEq); }catch(e){ console.error('Programa error',e); errores++; }
+
+  // Cierres
+  try{ renderCierres(allEq); }catch(e){ console.error('Cierres error',e); errores++; }
+
+  // Disponibilidad
+  if(dDisp.length){ try{ renderDisp(dDisp); }catch(e){ console.error('Disp error',e); errores++; } }
+  else { ['disponibilidad-all','disponibilidad-eq1','disponibilidad-eq2','disponibilidad-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar DISPONIBILIDAD.'); }); errores++; }
+
+  // Adherencia
+  if(dAdh.length){ try{ renderAdh(dAdh); }catch(e){ console.error('Adh error',e); errores++; } }
+  else { ['adherencia-all','adherencia-eq1','adherencia-eq2','adherencia-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar ADHERENCIA.'); }); errores++; }
+
+  const ahora = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  if(errores===0) setStatus('ok','Actualizado '+ahora);
+  else if(errores<3) setStatus('warn','Parcial '+ahora);
+  else setStatus('err','Error al cargar');
+  g('fechaFooter').textContent = 'Actualizado: '+new Date().toLocaleDateString('es-AR')+' '+ahora;
+  setLoading(false);
+}
+
+/* ═══════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════ */
 const d = new Date();
-const fecha = d.toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
-g('fechaTop').textContent = fecha;
-g('fechaFooter').textContent = fecha;
+g('fechaTop').textContent = d.toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+g('fechaFooter').textContent = '';
 loadAll();
 </script>
 </body>
