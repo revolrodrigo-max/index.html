@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --bg:#0A0C0F;--s1:#111318;--s2:#181C22;--s3:#1E232B;
@@ -146,6 +147,51 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .empty-state p{font-size:12px}
 
 .footer{padding:1.5rem;max-width:1440px;margin:0 auto;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;flex-wrap:wrap;gap:6px}
+
+/* ═══ TIME FILTER BAR ═══ */
+.time-filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);flex-wrap:wrap}
+.tf-label{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px}
+.tf-label i{font-size:14px}
+.tf-presets{display:flex;gap:4px}
+.tf-btn{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:'Inter',sans-serif;transition:all .15s}
+.tf-btn:hover{color:var(--muted2);border-color:var(--muted)}
+.tf-btn.active{background:var(--bbg);color:var(--blue);border-color:var(--bborder)}
+.tf-dates{display:flex;align-items:center;gap:6px;margin-left:auto}
+.tf-input{background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;color:var(--text);font-size:11px;font-family:'DM Mono',monospace;outline:none}
+.tf-input:focus{border-color:var(--blue)}
+.tf-input::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.5);cursor:pointer}
+.tf-sep{color:var(--muted);font-size:11px}
+.tf-range-info{font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;padding:2px 8px;background:var(--s2);border-radius:20px}
+
+/* ═══ CHART CONTAINERS ═══ */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px;margin-bottom:1.5rem}
+.chart-box{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:16px;position:relative}
+.chart-box-title{font-family:'Syne',sans-serif;font-size:12px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.chart-box-title i{font-size:15px}
+.chart-wrap{position:relative;height:260px}
+
+/* ═══ DOCS STYLES ═══ */
+.docs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.doc-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:18px;transition:border-color .15s}
+.doc-card:hover{border-color:var(--border2)}
+.doc-card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.doc-card-title i{font-size:16px}
+.doc-table{width:100%;border-collapse:collapse;font-size:11px}
+.doc-table th{text-align:left;padding:6px 8px;font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+.doc-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.doc-table tr:last-child td{border-bottom:none}
+.doc-col{font-weight:500;color:var(--blue);font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap}
+.doc-desc{color:var(--muted2);line-height:1.4}
+.doc-tag{display:inline-flex;padding:1px 6px;border-radius:4px;font-size:9px;font-family:'DM Mono',monospace}
+.doc-flow{display:flex;flex-direction:column;gap:10px;padding:4px 0}
+.doc-flow-step{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r)}
+.doc-flow-num{width:22px;height:22px;border-radius:50%;background:var(--bbg);color:var(--blue);border:1px solid var(--bborder);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'Syne',sans-serif;flex-shrink:0}
+.doc-flow-text{font-size:11px;color:var(--muted2);line-height:1.5}
+.doc-flow-text strong{color:var(--text);font-weight:500}
+.doc-kpi{display:flex;flex-direction:column;gap:6px;padding:4px 0}
+.doc-kpi-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);font-size:11px}
+.doc-kpi-name{font-weight:500;min-width:120px}
+.doc-kpi-formula{color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;flex:1}
 </style>
 </head>
 <body>
@@ -172,13 +218,33 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
       <button class="main-tab" onclick="showMain('cierres',this)">Cierres</button>
       <button class="main-tab" onclick="showMain('disponibilidad',this)">Disponibilidad</button>
       <button class="main-tab" onclick="showMain('adherencia',this)">Adherencia</button>
+      <button class="main-tab" onclick="showMain('historico',this)">Histórico</button>
+      <button class="main-tab" onclick="showMain('docs',this)">Docs</button>
     </div>
   </div>
 </nav>
 
 <div class="main">
 
-<!-- ══ PROGRAMA (overview pacientes activos/pausa) ══ -->
+<!-- ══ TIME FILTER BAR (global) ══ -->
+<div class="time-filter-bar" id="timeFilterBar">
+  <div class="tf-label"><i class="ti ti-clock"></i> Período</div>
+  <div class="tf-presets">
+    <button class="tf-btn" onclick="setTimeFilter('semana',this)">Semana</button>
+    <button class="tf-btn" onclick="setTimeFilter('mes',this)">Mes</button>
+    <button class="tf-btn" onclick="setTimeFilter('trimestre',this)">Trimestre</button>
+    <button class="tf-btn" onclick="setTimeFilter('semestre',this)">Semestre</button>
+    <button class="tf-btn active" onclick="setTimeFilter('todo',this)">Todo</button>
+  </div>
+  <div class="tf-dates">
+    <input type="date" class="tf-input" id="tfFrom" onchange="applyCustomRange()">
+    <span class="tf-sep">→</span>
+    <input type="date" class="tf-input" id="tfTo" onchange="applyCustomRange()">
+  </div>
+  <div class="tf-range-info" id="tfInfo">Mostrando: todos los datos</div>
+</div>
+
+<!-- ══ PROGRAMA ══ -->
 <div id="page-programa" class="page active">
   <div class="eq-tabs">
     <button class="eq-tab all active" onclick="showEq('programa','all',this)">Todos</button>
@@ -234,9 +300,202 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
   <div id="adherencia-eq3" class="eq-content"></div>
 </div>
 
+<!-- ══ HISTÓRICO (gráficos) ══ -->
+<div id="page-historico" class="page">
+  <div class="eq-tabs">
+    <button class="eq-tab all active" onclick="showEq('historico','all',this)">Todos</button>
+    <button class="eq-tab eq1" onclick="showEq('historico','eq1',this)">Equipo 1</button>
+    <button class="eq-tab eq2" onclick="showEq('historico','eq2',this)">Equipo 2</button>
+    <button class="eq-tab eq3" onclick="showEq('historico','eq3',this)">Equipo 3</button>
+  </div>
+  <div id="historico-all" class="eq-content active">
+    <div class="chart-grid">
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-chart-line" style="color:var(--blue)"></i> Cierres por semana</div>
+        <div class="chart-wrap"><canvas id="chartCierresSemana"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-chart-pie" style="color:var(--green)"></i> Renovaciones vs No renovaciones</div>
+        <div class="chart-wrap"><canvas id="chartRenovaciones"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-chart-bar" style="color:var(--amber)"></i> Cierres acumulados por mes</div>
+        <div class="chart-wrap"><canvas id="chartCierresMes"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-chart-dots" style="color:var(--red)"></i> Niveles de riesgo (Adherencia)</div>
+        <div class="chart-wrap"><canvas id="chartRiesgo"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-users" style="color:var(--purple)"></i> Pacientes por equipo</div>
+        <div class="chart-wrap"><canvas id="chartEquipos"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-timeline" style="color:var(--orange)"></i> Estado del programa</div>
+        <div class="chart-wrap"><canvas id="chartEstados"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div id="historico-eq1" class="eq-content">
+    <div class="chart-grid">
+      <div class="chart-box"><div class="chart-box-title"><i class="ti ti-chart-line" style="color:var(--blue)"></i> Cierres Equipo 1 por semana</div><div class="chart-wrap"><canvas id="chartCierresEq1"></canvas></div></div>
+      <div class="chart-box"><div class="chart-box-title"><i class="ti ti-chart-pie" style="color:var(--green)"></i> Renovaciones Equipo 1</div><div class="chart-wrap"><canvas id="chartRenovEq1"></canvas></div></div>
+    </div>
+  </div>
+  <div id="historico-eq2" class="eq-content">
+    <div class="chart-grid">
+      <div class="chart-box"><div class="chart-box-title"><i class="ti ti-chart-line" style="color:var(--green)"></i> Cierres Equipo 2 por semana</div><div class="chart-wrap"><canvas id="chartCierresEq2"></canvas></div></div>
+      <div class="chart-box"><div class="chart-box-title"><i class="ti ti-chart-pie" style="color:var(--green)"></i> Renovaciones Equipo 2</div><div class="chart-wrap"><canvas id="chartRenovEq2"></canvas></div></div>
+    </div>
+  </div>
+  <div id="historico-eq3" class="eq-content">
+    <div class="chart-grid">
+      <div class="chart-box"><div class="chart-box-title"><i class="ti ti-chart-line" style="color:var(--amber)"></i> Cierres Equipo 3 por semana</div><div class="chart-wrap"><canvas id="chartCierresEq3"></canvas></div></div>
+      <div class="chart-box"><div class="chart-box-title"><i class="ti ti-chart-pie" style="color:var(--green)"></i> Renovaciones Equipo 3</div><div class="chart-wrap"><canvas id="chartRenovEq3"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DOCUMENTACIÓN ══ -->
+<div id="page-docs" class="page">
+
+  <div class="section">
+    <div class="sec-hdr"><i class="ti ti-file-description" style="color:var(--blue)"></i><span class="sec-title">Documentación del Dashboard</span><span class="sec-badge sb-b">v3.1</span></div>
+  </div>
+
+  <div class="docs-grid">
+
+    <!-- Arquitectura -->
+    <div class="doc-card" style="grid-column:1/-1">
+      <div class="doc-card-title"><i class="ti ti-topology-star-3" style="color:var(--green)"></i> Arquitectura & Flujo de datos</div>
+      <div class="doc-flow">
+        <div class="doc-flow-step">
+          <div class="doc-flow-num">1</div>
+          <div class="doc-flow-text"><strong>Google Sheets (Fuente)</strong> — Planilla <em>testo_boost_base_datos_v2</em> con 7 hojas: ÍNDICE, EQ1_CIERRES, EQ2_CIERRES, EQ3_CIERRES, ADHERENCIA, DISPONIBILIDAD, PROFESIONALES. Los datos se cargan manualmente por el equipo.</div>
+        </div>
+        <div class="doc-flow-step">
+          <div class="doc-flow-num">2</div>
+          <div class="doc-flow-text"><strong>Publicación CSV</strong> — Cada hoja está publicada como CSV público via <em>File → Share → Publish to Web</em>. URLs con formato <code>pub?gid=XXX&output=csv</code>.</div>
+        </div>
+        <div class="doc-flow-step">
+          <div class="doc-flow-num">3</div>
+          <div class="doc-flow-text"><strong>Dashboard HTML</strong> — Single-file app (index.html) alojada en GitHub Pages. Consume los CSVs via <code>fetch()</code>, parsea y renderiza. Sin backend ni base de datos.</div>
+        </div>
+        <div class="doc-flow-step">
+          <div class="doc-flow-num">4</div>
+          <div class="doc-flow-text"><strong>Actualización</strong> — Click en "Actualizar" o al cargar la página. Los datos se refrescan en tiempo real desde Google Sheets (cache-bust con timestamp).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hojas -->
+    <div class="doc-card">
+      <div class="doc-card-title"><i class="ti ti-table" style="color:var(--amber)"></i> Hojas del Spreadsheet</div>
+      <table class="doc-table">
+        <tr><th>Hoja</th><th>Descripción</th><th>Frecuencia</th></tr>
+        <tr><td class="doc-col">ÍNDICE</td><td class="doc-desc">Mapa general de hojas y fuentes</td><td><span class="doc-tag bx-gr">Referencia</span></td></tr>
+        <tr><td class="doc-col">EQ1_CIERRES</td><td class="doc-desc">Pacientes Equipo 1 — estado, fechas, renovación</td><td><span class="doc-tag bx-g">Diaria</span></td></tr>
+        <tr><td class="doc-col">EQ2_CIERRES</td><td class="doc-desc">Pacientes Equipo 2 — estado, fechas, renovación</td><td><span class="doc-tag bx-g">Diaria</span></td></tr>
+        <tr><td class="doc-col">EQ3_CIERRES</td><td class="doc-desc">Pacientes Equipo 3 — estado, fechas, renovación</td><td><span class="doc-tag bx-g">Diaria</span></td></tr>
+        <tr><td class="doc-col">ADHERENCIA</td><td class="doc-desc">Seguimiento de riesgo, accionables y reuniones</td><td><span class="doc-tag bx-a">Semanal</span></td></tr>
+        <tr><td class="doc-col">DISPONIBILIDAD</td><td class="doc-desc">Agenda profesionales — slots, ocupación</td><td><span class="doc-tag bx-b">Periódica</span></td></tr>
+        <tr><td class="doc-col">PROFESIONALES</td><td class="doc-desc">Master de profesionales — rol, equipo, contacto</td><td><span class="doc-tag bx-gr">Referencia</span></td></tr>
+      </table>
+    </div>
+
+    <!-- Diccionario EQ_CIERRES -->
+    <div class="doc-card">
+      <div class="doc-card-title"><i class="ti ti-vocabulary" style="color:var(--blue)"></i> Diccionario: EQ_CIERRES</div>
+      <table class="doc-table">
+        <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+        <tr><td class="doc-col">#</td><td class="doc-desc">Num</td><td class="doc-desc">ID secuencial del paciente</td></tr>
+        <tr><td class="doc-col">NOMBRE COMPLETO</td><td class="doc-desc">Texto</td><td class="doc-desc">Nombre completo del paciente</td></tr>
+        <tr><td class="doc-col">ESTADO</td><td class="doc-desc">Enum</td><td class="doc-desc">ACTIVO | EN PAUSA</td></tr>
+        <tr><td class="doc-col">INICIO</td><td class="doc-desc">Fecha</td><td class="doc-desc">Fecha inicio programa (DD/MM/AAAA)</td></tr>
+        <tr><td class="doc-col">FIN</td><td class="doc-desc">Fecha</td><td class="doc-desc">Fecha fin/cierre programa</td></tr>
+        <tr><td class="doc-col">DURACION</td><td class="doc-desc">Texto</td><td class="doc-desc">Duración del programa (ej: 6 MESES)</td></tr>
+        <tr><td class="doc-col">SEMANA DEL PROGRAMA</td><td class="doc-desc">Texto</td><td class="doc-desc">Semana actual dentro del programa</td></tr>
+        <tr><td class="doc-col">RENOVÓ</td><td class="doc-desc">Enum</td><td class="doc-desc">SI | NO | (vacío = pendiente)</td></tr>
+        <tr><td class="doc-col">Notas Cierre</td><td class="doc-desc">Texto</td><td class="doc-desc">Observaciones del cierre</td></tr>
+      </table>
+    </div>
+
+    <!-- Diccionario ADHERENCIA -->
+    <div class="doc-card">
+      <div class="doc-card-title"><i class="ti ti-vocabulary" style="color:var(--red)"></i> Diccionario: ADHERENCIA</div>
+      <table class="doc-table">
+        <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+        <tr><td class="doc-col">SEMANA ISO</td><td class="doc-desc">Num</td><td class="doc-desc">Número de semana ISO del año</td></tr>
+        <tr><td class="doc-col">FECHA REUNIÓN</td><td class="doc-desc">Fecha</td><td class="doc-desc">Fecha de la reunión semanal</td></tr>
+        <tr><td class="doc-col">NOMBRE PACIENTE</td><td class="doc-desc">Texto</td><td class="doc-desc">Paciente en seguimiento</td></tr>
+        <tr><td class="doc-col">EQUIPO</td><td class="doc-desc">Enum</td><td class="doc-desc">Equipo 1 | 2 | 3</td></tr>
+        <tr><td class="doc-col">NIVEL RIESGO</td><td class="doc-desc">Enum</td><td class="doc-desc">CRÍTICO | MODERADO | MONITOREO</td></tr>
+        <tr><td class="doc-col">TIPO PROBLEMA</td><td class="doc-desc">Texto</td><td class="doc-desc">Categoría del problema identificado</td></tr>
+        <tr><td class="doc-col">ACCIONABLE PRINCIPAL</td><td class="doc-desc">Texto</td><td class="doc-desc">Acción a tomar</td></tr>
+        <tr><td class="doc-col">ESTADO ACCIONABLE</td><td class="doc-desc">Enum</td><td class="doc-desc">PENDIENTE | EN PROCESO | RESUELTO</td></tr>
+        <tr><td class="doc-col">FECHA LÍMITE</td><td class="doc-desc">Fecha</td><td class="doc-desc">Deadline del accionable</td></tr>
+      </table>
+    </div>
+
+    <!-- Diccionario DISPONIBILIDAD -->
+    <div class="doc-card">
+      <div class="doc-card-title"><i class="ti ti-vocabulary" style="color:var(--green)"></i> Diccionario: DISPONIBILIDAD</div>
+      <table class="doc-table">
+        <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+        <tr><td class="doc-col">PROFESIONAL</td><td class="doc-desc">Texto</td><td class="doc-desc">Nombre del profesional</td></tr>
+        <tr><td class="doc-col">ROL</td><td class="doc-desc">Enum</td><td class="doc-desc">COACH | NUTRICIONISTA | MÉDICO | ENTRENADOR</td></tr>
+        <tr><td class="doc-col">EQUIPO</td><td class="doc-desc">Enum</td><td class="doc-desc">Equipo asignado</td></tr>
+        <tr><td class="doc-col">AGENDADAS</td><td class="doc-desc">Num</td><td class="doc-desc">Sesiones agendadas en período</td></tr>
+        <tr><td class="doc-col">LIBRES</td><td class="doc-desc">Num</td><td class="doc-desc">Slots libres disponibles</td></tr>
+        <tr><td class="doc-col">CAP. MÁX</td><td class="doc-desc">Num</td><td class="doc-desc">Capacidad máxima semanal</td></tr>
+        <tr><td class="doc-col">OCUP. %</td><td class="doc-desc">%</td><td class="doc-desc">Porcentaje de ocupación</td></tr>
+      </table>
+    </div>
+
+    <!-- KPIs -->
+    <div class="doc-card">
+      <div class="doc-card-title"><i class="ti ti-target" style="color:var(--purple)"></i> Métricas & KPIs</div>
+      <div class="doc-kpi">
+        <div class="doc-kpi-row"><span class="doc-kpi-name" style="color:var(--blue)">Total pacientes</span><span class="doc-kpi-formula">COUNT(todas las filas EQ1+EQ2+EQ3)</span></div>
+        <div class="doc-kpi-row"><span class="doc-kpi-name" style="color:var(--green)">Activos</span><span class="doc-kpi-formula">ESTADO = "ACTIVO"</span></div>
+        <div class="doc-kpi-row"><span class="doc-kpi-name" style="color:var(--amber)">En pausa</span><span class="doc-kpi-formula">ESTADO contiene "PAUSA"</span></div>
+        <div class="doc-kpi-row"><span class="doc-kpi-name" style="color:var(--orange)">Cierres semana</span><span class="doc-kpi-formula">FIN entre lunes y domingo de semana actual</span></div>
+        <div class="doc-kpi-row"><span class="doc-kpi-name" style="color:var(--purple)">Cierres mes</span><span class="doc-kpi-formula">FIN dentro del mes calendario actual</span></div>
+        <div class="doc-kpi-row"><span class="doc-kpi-name" style="color:var(--green)">Tasa renovación</span><span class="doc-kpi-formula">RENOVÓ="SI" / total cierres × 100</span></div>
+        <div class="doc-kpi-row"><span class="doc-kpi-name" style="color:var(--red)">Pacientes críticos</span><span class="doc-kpi-formula">NIVEL RIESGO contiene "CRÍT"</span></div>
+        <div class="doc-kpi-row"><span class="doc-kpi-name" style="color:var(--blue)">Ocupación promedio</span><span class="doc-kpi-formula">AVG(OCUP. %) de todos los profesionales</span></div>
+      </div>
+    </div>
+
+    <!-- Notas técnicas -->
+    <div class="doc-card">
+      <div class="doc-card-title"><i class="ti ti-code" style="color:var(--muted2)"></i> Notas técnicas</div>
+      <div class="doc-flow">
+        <div class="doc-flow-step">
+          <div class="doc-flow-num"><i class="ti ti-calendar" style="font-size:11px"></i></div>
+          <div class="doc-flow-text"><strong>Formato de fechas:</strong> DD/MM/AAAA — parseado con <code>split('/')</code>. La semana se calcula lunes a domingo (ISO).</div>
+        </div>
+        <div class="doc-flow-step">
+          <div class="doc-flow-num"><i class="ti ti-refresh" style="font-size:11px"></i></div>
+          <div class="doc-flow-text"><strong>Cache-bust:</strong> Cada fetch agrega <code>&cachebust=Date.now()</code> para evitar cache del navegador y mostrar datos en tiempo real.</div>
+        </div>
+        <div class="doc-flow-step">
+          <div class="doc-flow-num"><i class="ti ti-server" style="font-size:11px"></i></div>
+          <div class="doc-flow-text"><strong>Sin backend:</strong> 100% client-side. No hay base de datos ni servidor. Los datos viven en Google Sheets y se leen como CSV publicado.</div>
+        </div>
+        <div class="doc-flow-step">
+          <div class="doc-flow-num"><i class="ti ti-brand-github" style="font-size:11px"></i></div>
+          <div class="doc-flow-text"><strong>Hosting:</strong> GitHub Pages — repositorio <code>revolrodrigo-max.github.io</code>. Deploy automático al hacer push a main.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </div>
 <div class="footer">
-  <span>Testo Boost · Dashboard COO v3.0 · Rodrigo</span>
+  <span>Testo Boost · Dashboard COO v3.1 · Rodrigo</span>
   <span id="fechaFooter"></span>
 </div>
 
@@ -253,7 +512,14 @@ const URLS = {
 };
 
 /* ═══════════════════════════════════════
-   CSV PARSER — handles multiline, \r\n, decorative rows
+   GLOBAL STATE
+   ═══════════════════════════════════════ */
+let RAW = { eq1:[], eq2:[], eq3:[], disp:[], adh:[] };
+let FILTER = { from: null, to: null, mode: 'todo' };
+let CHARTS = {};
+
+/* ═══════════════════════════════════════
+   CSV PARSER
    ═══════════════════════════════════════ */
 function csvLines(txt){
   const res=[]; let cur='',inQ=false;
@@ -330,6 +596,18 @@ function inRange(dateStr, range){
   const d = parseDate(dateStr);
   return d && d >= range.start && d <= range.end;
 }
+function inGlobalFilter(dateStr){
+  if(FILTER.mode === 'todo' && !FILTER.from && !FILTER.to) return true;
+  const d = parseDate(dateStr);
+  if(!d) return true; // keep rows without date
+  if(FILTER.from && d < FILTER.from) return false;
+  if(FILTER.to && d > FILTER.to) return false;
+  return true;
+}
+function filterRows(rows, dateCol){
+  if(FILTER.mode === 'todo' && !FILTER.from && !FILTER.to) return rows;
+  return rows.filter(r => inGlobalFilter(r[dateCol]));
+}
 function setStatus(state, txt){
   g('statusDot').className = 'status-dot '+(state==='ok'?'dot-ok':state==='warn'?'dot-warn':state==='err'?'dot-err':'dot-idle');
   g('statusTxt').textContent = txt;
@@ -342,7 +620,91 @@ function setLoading(on){
 function emptyState(msg){ return `<div class="empty-state"><i class="ti ti-inbox"></i><p>${msg}</p></div>`; }
 
 /* ═══════════════════════════════════════
-   RENDER: PROGRAMA (pacientes activos / pausa)
+   TIME FILTER
+   ═══════════════════════════════════════ */
+function setTimeFilter(mode, btn){
+  // Clear active
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  FILTER.mode = mode;
+
+  const now = new Date();
+  now.setHours(23,59,59,999);
+
+  switch(mode){
+    case 'semana': {
+      const day = now.getDay();
+      const mon = new Date(now); mon.setDate(now.getDate() - (day===0?6:day-1)); mon.setHours(0,0,0,0);
+      FILTER.from = mon; FILTER.to = now;
+      break;
+    }
+    case 'mes': {
+      FILTER.from = new Date(now.getFullYear(), now.getMonth(), 1);
+      FILTER.to = now;
+      break;
+    }
+    case 'trimestre': {
+      FILTER.from = new Date(now.getFullYear(), now.getMonth()-2, 1);
+      FILTER.to = now;
+      break;
+    }
+    case 'semestre': {
+      FILTER.from = new Date(now.getFullYear(), now.getMonth()-5, 1);
+      FILTER.to = now;
+      break;
+    }
+    case 'todo':
+    default:
+      FILTER.from = null; FILTER.to = null;
+  }
+
+  // Sync date inputs
+  if(FILTER.from) g('tfFrom').value = FILTER.from.toISOString().split('T')[0];
+  else g('tfFrom').value = '';
+  if(FILTER.to) g('tfTo').value = FILTER.to.toISOString().split('T')[0];
+  else g('tfTo').value = '';
+
+  updateFilterInfo();
+  rerender();
+}
+function applyCustomRange(){
+  const from = g('tfFrom').value;
+  const to = g('tfTo').value;
+  document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active'));
+  FILTER.mode = 'custom';
+  FILTER.from = from ? new Date(from+'T00:00:00') : null;
+  FILTER.to = to ? new Date(to+'T23:59:59') : null;
+  updateFilterInfo();
+  rerender();
+}
+function updateFilterInfo(){
+  const el = g('tfInfo');
+  if(FILTER.mode === 'todo') el.textContent = 'Mostrando: todos los datos';
+  else if(FILTER.mode === 'custom') el.textContent = 'Rango personalizado';
+  else {
+    const labels = {semana:'esta semana',mes:'este mes',trimestre:'últimos 3 meses',semestre:'últimos 6 meses'};
+    el.textContent = 'Mostrando: ' + (labels[FILTER.mode]||FILTER.mode);
+  }
+}
+
+/* ═══════════════════════════════════════
+   RERENDER (after filter change)
+   ═══════════════════════════════════════ */
+function rerender(){
+  const allEq = [
+    {label:'Equipo 1', rows: filterRows(RAW.eq1, 'FIN')},
+    {label:'Equipo 2', rows: filterRows(RAW.eq2, 'FIN')},
+    {label:'Equipo 3', rows: filterRows(RAW.eq3, 'FIN')}
+  ];
+  try{ renderPrograma(allEq); }catch(e){ console.error(e); }
+  try{ renderCierres(allEq); }catch(e){ console.error(e); }
+  if(RAW.disp.length) try{ renderDisp(RAW.disp); }catch(e){ console.error(e); }
+  if(RAW.adh.length) try{ renderAdh(filterRows(RAW.adh, 'FECHA REUNIÓN')); }catch(e){ console.error(e); }
+  try{ renderHistorico(); }catch(e){ console.error(e); }
+}
+
+/* ═══════════════════════════════════════
+   RENDER: PROGRAMA
    ═══════════════════════════════════════ */
 function renderPrograma(allEq){
   const week = getWeekRange();
@@ -354,7 +716,7 @@ function renderPrograma(allEq){
     const total = rows.length;
     const cierresSemana = rows.filter(r=>inRange(r.FIN, week));
     const cierresMes = rows.filter(r=>inRange(r.FIN, month));
-    return {total, activos:activos.length, pausa:pausa.length, cierresSemana:cierresSemana.length, cierresMes:cierresMes.length, rowsCierresSemana:cierresSemana, rowsCierresMes:cierresMes};
+    return {total, activos:activos.length, pausa:pausa.length, cierresSemana:cierresSemana.length, cierresMes:cierresMes.length};
   }
 
   function metricsHTML(s, label){
@@ -383,7 +745,6 @@ function renderPrograma(allEq){
       }).join('')}</div></div>`;
   }
 
-  // ALL
   const allRows = [...allEq[0].rows, ...allEq[1].rows, ...allEq[2].rows];
   const sAll = statsFor(allRows);
   let allHTML = metricsHTML(sAll, 'Todos los equipos');
@@ -394,7 +755,6 @@ function renderPrograma(allEq){
   allHTML += pausaListHTML(allRows);
   g('programa-all').innerHTML = allHTML;
 
-  // Per equipo
   allEq.forEach((eq, i) => {
     const s = statsFor(eq.rows);
     let html = metricsHTML(s, eq.label);
@@ -404,7 +764,7 @@ function renderPrograma(allEq){
 }
 
 /* ═══════════════════════════════════════
-   RENDER: CIERRES (solo pacientes con FIN en semana/mes actual)
+   RENDER: CIERRES
    ═══════════════════════════════════════ */
 function renderCierres(allEq){
   const week = getWeekRange();
@@ -462,11 +822,8 @@ function renderCierres(allEq){
     </div>`;
   }
 
-  // ALL
   const allRows = [...allEq[0].rows, ...allEq[1].rows, ...allEq[2].rows];
-  let allHTML = cierresBlock(allRows, 'Todos los equipos');
-  g('cierres-all').innerHTML = allHTML;
-
+  g('cierres-all').innerHTML = cierresBlock(allRows, 'Todos los equipos');
   allEq.forEach((eq, i) => {
     g('cierres-eq'+(i+1)).innerHTML = cierresBlock(eq.rows, eq.label);
   });
@@ -487,8 +844,8 @@ function renderDisp(data){
     const bc = pct>=90?'bar-danger':pct>=65?'bar-warn':'bar-ok';
     const bx = pct>=90?'bx-r':pct>=65?'bx-a':'bx-g';
     const bl = pct>=99?'Saturado':pct>=90?'Alta':pct>=65?'Media':pct>=30?'Baja':'Disponible';
-    const vc = pct>=90?'var(--red)':pct>=65?'var(--amber)':'var(--green)';
     const av = pct>=90?'av-r':pct>=65?'av-a':'av-g';
+    const vc = pct>=90?'var(--red)':pct>=65?'var(--amber)':'var(--green)';
     return `<div class="prof-card">
       <div class="prof-top">
         <div class="av ${av}">${initials(nombre)}</div>
@@ -534,9 +891,7 @@ function renderDisp(data){
   const eq2 = data.filter(p=>(p.EQUIPO||'').includes('2'));
   const eq3 = data.filter(p=>(p.EQUIPO||'').includes('3'));
 
-  // ALL — show segmented
-  let allHTML = dispBlock(data, 'Todos los equipos');
-  g('disponibilidad-all').innerHTML = allHTML;
+  g('disponibilidad-all').innerHTML = dispBlock(data, 'Todos los equipos');
   g('disponibilidad-eq1').innerHTML = dispBlock(eq1, 'Equipo 1');
   g('disponibilidad-eq2').innerHTML = dispBlock(eq2, 'Equipo 2');
   g('disponibilidad-eq3').innerHTML = dispBlock(eq3, 'Equipo 3');
@@ -557,7 +912,7 @@ function renderAdh(data){
     const nombre = row['NOMBRE PACIENTE']||row.PACIENTE||'—';
     const nivel = row['NIVEL RIESGO']||row.NIVEL||'';
     const tipo = row['TIPO PROBLEMA']||'';
-    const ctx = row['CONTEXTO / SITUACIÓN']||row.CONTEXTO||'';
+    const ctx = row['CONTEXTO / SITUACIÓN']||row['CONTEXTO/SITUACIÓN']||row.CONTEXTO||'';
     const accion = row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
     const resp = row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'—';
     const estado = row['ESTADO ACCIONABLE']||row.ESTADO||'PENDIENTE';
@@ -601,10 +956,7 @@ function renderAdh(data){
     </div>
     <div class="section">
       <div class="sec-hdr"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i><span class="sec-title">Pacientes en riesgo</span><span class="sec-badge sb-a">${rows.length} pacientes</span></div>
-      <div class="adh-list">${rows.length ? rows.map((r,i)=>{
-        const card = adhCard(r, 'adh-'+label.replace(/\s/g,'')+'-'+i);
-        return card;
-      }).join('') : emptyState('Sin pacientes en riesgo.')}</div>
+      <div class="adh-list">${rows.length ? rows.map((r,i)=>adhCard(r, 'adh-'+label.replace(/\s/g,'')+'-'+i)).join('') : emptyState('Sin pacientes en riesgo.')}</div>
     </div>`;
   }
 
@@ -617,12 +969,256 @@ function renderAdh(data){
   g('adherencia-eq2').innerHTML = adhBlock(eq2, 'Equipo 2');
   g('adherencia-eq3').innerHTML = adhBlock(eq3, 'Equipo 3');
 
-  // Auto-open criticos
   data.forEach((r,i)=>{
     if((r['NIVEL RIESGO']||'').toLowerCase().includes('crít')){
       const el = document.getElementById('adh-Todoslosequipos-'+i);
       if(el) el.classList.add('open');
     }
+  });
+}
+
+/* ═══════════════════════════════════════
+   RENDER: HISTÓRICO (Charts)
+   ═══════════════════════════════════════ */
+const CHART_DEFAULTS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: '#9CA3AF', font: { family: 'Inter', size: 11 } } },
+    tooltip: { backgroundColor: '#1E232B', titleColor: '#E8EDF3', bodyColor: '#9CA3AF', borderColor: 'rgba(255,255,255,.13)', borderWidth: 1 }
+  },
+  scales: {
+    x: { ticks: { color: '#6B7280', font: { family: 'DM Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' } },
+    y: { ticks: { color: '#6B7280', font: { family: 'DM Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' }, beginAtZero: true }
+  }
+};
+
+function destroyChart(id){
+  if(CHARTS[id]){ CHARTS[id].destroy(); delete CHARTS[id]; }
+}
+
+function getWeekLabel(d){
+  const oneJan = new Date(d.getFullYear(),0,1);
+  const weekNum = Math.ceil((((d - oneJan) / 86400000) + oneJan.getDay()+1)/7);
+  return `S${weekNum}`;
+}
+
+function getMonthLabel(d){
+  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return months[d.getMonth()] + ' ' + d.getFullYear().toString().slice(2);
+}
+
+function groupByWeek(rows, dateCol){
+  const map = {};
+  rows.forEach(r=>{
+    const d = parseDate(r[dateCol]);
+    if(!d) return;
+    const label = getWeekLabel(d);
+    const key = d.getFullYear()*100 + Math.ceil((((d - new Date(d.getFullYear(),0,1)) / 86400000) + new Date(d.getFullYear(),0,1).getDay()+1)/7);
+    if(!map[key]) map[key] = {label, count:0, si:0, no:0, pend:0};
+    map[key].count++;
+    const renov = (r['RENOVÓ']||r.RENOVO||'').toUpperCase();
+    if(renov==='SI'||renov==='SÍ') map[key].si++;
+    else if(renov==='NO') map[key].no++;
+    else map[key].pend++;
+  });
+  return Object.entries(map).sort((a,b)=>a[0]-b[0]).map(([k,v])=>v);
+}
+
+function groupByMonth(rows, dateCol){
+  const map = {};
+  rows.forEach(r=>{
+    const d = parseDate(r[dateCol]);
+    if(!d) return;
+    const key = d.getFullYear()*100 + d.getMonth();
+    const label = getMonthLabel(d);
+    if(!map[key]) map[key] = {label, count:0, si:0, no:0};
+    map[key].count++;
+    const renov = (r['RENOVÓ']||r.RENOVO||'').toUpperCase();
+    if(renov==='SI'||renov==='SÍ') map[key].si++;
+    else if(renov==='NO') map[key].no++;
+  });
+  return Object.entries(map).sort((a,b)=>a[0]-b[0]).map(([k,v])=>v);
+}
+
+function renderHistorico(){
+  const allRows = [...filterRows(RAW.eq1,'FIN'), ...filterRows(RAW.eq2,'FIN'), ...filterRows(RAW.eq3,'FIN')];
+  const adhRows = filterRows(RAW.adh, 'FECHA REUNIÓN');
+
+  // === CHART: Cierres por semana (line) ===
+  const weekData = groupByWeek(allRows, 'FIN');
+  destroyChart('cierresSemana');
+  const ctx1 = g('chartCierresSemana');
+  if(ctx1) CHARTS.cierresSemana = new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: weekData.map(w=>w.label),
+      datasets: [
+        { label: 'Cierres', data: weekData.map(w=>w.count), borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,.1)', fill: true, tension: .3, pointRadius: 3 },
+        { label: 'Renovaron', data: weekData.map(w=>w.si), borderColor: '#22C55E', backgroundColor: 'rgba(34,197,94,.1)', fill: false, tension: .3, pointRadius: 2 },
+        { label: 'No renovaron', data: weekData.map(w=>w.no), borderColor: '#EF4444', backgroundColor: 'rgba(239,68,68,.1)', fill: false, tension: .3, pointRadius: 2 }
+      ]
+    },
+    options: JSON.parse(JSON.stringify(CHART_DEFAULTS))
+  });
+
+  // === CHART: Renovaciones pie ===
+  const totalSi = allRows.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SI'||v==='SÍ';}).length;
+  const totalNo = allRows.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
+  const totalPend = allRows.length - totalSi - totalNo;
+  destroyChart('renovaciones');
+  const ctx2 = g('chartRenovaciones');
+  if(ctx2) CHARTS.renovaciones = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: ['Renovaron','No renovaron','Pendiente'],
+      datasets: [{
+        data: [totalSi, totalNo, totalPend],
+        backgroundColor: ['#22C55E','#EF4444','#F59E0B'],
+        borderColor: ['rgba(34,197,94,.3)','rgba(239,68,68,.3)','rgba(245,158,11,.3)'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#9CA3AF', font: { family: 'Inter', size: 11 }, padding: 15 } },
+        tooltip: CHART_DEFAULTS.plugins.tooltip
+      }
+    }
+  });
+
+  // === CHART: Cierres acumulados por mes (bar) ===
+  const monthData = groupByMonth(allRows, 'FIN');
+  destroyChart('cierresMes');
+  const ctx3 = g('chartCierresMes');
+  if(ctx3) CHARTS.cierresMes = new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: monthData.map(m=>m.label),
+      datasets: [
+        { label: 'Renovaron', data: monthData.map(m=>m.si), backgroundColor: 'rgba(34,197,94,.7)', borderRadius: 4, barPercentage: .7 },
+        { label: 'No renovaron', data: monthData.map(m=>m.no), backgroundColor: 'rgba(239,68,68,.7)', borderRadius: 4, barPercentage: .7 },
+        { label: 'Total cierres', data: monthData.map(m=>m.count), backgroundColor: 'rgba(59,130,246,.3)', borderRadius: 4, barPercentage: .7 }
+      ]
+    },
+    options: { ...JSON.parse(JSON.stringify(CHART_DEFAULTS)), plugins: { ...CHART_DEFAULTS.plugins, legend: { ...CHART_DEFAULTS.plugins.legend } } }
+  });
+
+  // === CHART: Niveles de riesgo (adherencia) ===
+  const countNivel = (arr,kw) => arr.filter(r=>(r['NIVEL RIESGO']||'').toLowerCase().includes(kw)).length;
+  const criticos = countNivel(adhRows,'crít') + countNivel(adhRows,'crit');
+  const moderados = countNivel(adhRows,'moder') + countNivel(adhRows,'bajo');
+  const monit = Math.max(adhRows.length - criticos - moderados, 0);
+  destroyChart('riesgo');
+  const ctx4 = g('chartRiesgo');
+  if(ctx4) CHARTS.riesgo = new Chart(ctx4, {
+    type: 'polarArea',
+    data: {
+      labels: ['Crítico','Moderado','Monitoreo'],
+      datasets: [{
+        data: [criticos, moderados, monit],
+        backgroundColor: ['rgba(239,68,68,.6)','rgba(245,158,11,.6)','rgba(107,114,128,.4)'],
+        borderColor: ['rgba(239,68,68,.8)','rgba(245,158,11,.8)','rgba(107,114,128,.6)'],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#9CA3AF', font: { family: 'Inter', size: 11 }, padding: 15 } },
+        tooltip: CHART_DEFAULTS.plugins.tooltip
+      },
+      scales: { r: { ticks: { display: false }, grid: { color: 'rgba(255,255,255,.05)' } } }
+    }
+  });
+
+  // === CHART: Pacientes por equipo (bar horizontal) ===
+  const eq1Count = filterRows(RAW.eq1,'FIN').length;
+  const eq2Count = filterRows(RAW.eq2,'FIN').length;
+  const eq3Count = filterRows(RAW.eq3,'FIN').length;
+  const eq1Act = filterRows(RAW.eq1,'FIN').filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  const eq2Act = filterRows(RAW.eq2,'FIN').filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  const eq3Act = filterRows(RAW.eq3,'FIN').filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  destroyChart('equipos');
+  const ctx5 = g('chartEquipos');
+  if(ctx5) CHARTS.equipos = new Chart(ctx5, {
+    type: 'bar',
+    data: {
+      labels: ['Equipo 1','Equipo 2','Equipo 3'],
+      datasets: [
+        { label: 'Total', data: [eq1Count,eq2Count,eq3Count], backgroundColor: ['rgba(59,130,246,.5)','rgba(34,197,94,.5)','rgba(245,158,11,.5)'], borderRadius: 6, barPercentage: .6 },
+        { label: 'Activos', data: [eq1Act,eq2Act,eq3Act], backgroundColor: ['rgba(59,130,246,.9)','rgba(34,197,94,.9)','rgba(245,158,11,.9)'], borderRadius: 6, barPercentage: .6 }
+      ]
+    },
+    options: { ...JSON.parse(JSON.stringify(CHART_DEFAULTS)), indexAxis: 'y' }
+  });
+
+  // === CHART: Estado del programa (doughnut) ===
+  const allActivos = allRows.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  const allPausa = allRows.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA')).length;
+  const allOtros = allRows.length - allActivos - allPausa;
+  destroyChart('estados');
+  const ctx6 = g('chartEstados');
+  if(ctx6) CHARTS.estados = new Chart(ctx6, {
+    type: 'doughnut',
+    data: {
+      labels: ['Activos','En pausa','Otros/Cerrados'],
+      datasets: [{
+        data: [allActivos, allPausa, allOtros],
+        backgroundColor: ['#22C55E','#F59E0B','#6B7280'],
+        borderColor: ['rgba(34,197,94,.3)','rgba(245,158,11,.3)','rgba(107,114,128,.3)'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#9CA3AF', font: { family: 'Inter', size: 11 }, padding: 15 } },
+        tooltip: CHART_DEFAULTS.plugins.tooltip
+      }
+    }
+  });
+
+  // === Per-equipo charts ===
+  renderEqCharts(filterRows(RAW.eq1,'FIN'), 'Eq1', '#3B82F6');
+  renderEqCharts(filterRows(RAW.eq2,'FIN'), 'Eq2', '#22C55E');
+  renderEqCharts(filterRows(RAW.eq3,'FIN'), 'Eq3', '#F59E0B');
+}
+
+function renderEqCharts(rows, suffix, color){
+  const weekData = groupByWeek(rows, 'FIN');
+  const chartId = 'cierres'+suffix;
+  destroyChart(chartId);
+  const canvas = g('chart'+chartId.charAt(0).toUpperCase()+chartId.slice(1));
+  if(!canvas) return;
+  CHARTS[chartId] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: weekData.map(w=>w.label),
+      datasets: [
+        { label: 'Cierres', data: weekData.map(w=>w.count), borderColor: color, backgroundColor: color.replace(')',', .1)').replace('rgb','rgba'), fill: true, tension: .3, pointRadius: 3 },
+        { label: 'Renovaron', data: weekData.map(w=>w.si), borderColor: '#22C55E', fill: false, tension: .3, pointRadius: 2 }
+      ]
+    },
+    options: JSON.parse(JSON.stringify(CHART_DEFAULTS))
+  });
+
+  // Renov pie
+  const si = rows.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SI'||v==='SÍ';}).length;
+  const no = rows.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
+  const pend = rows.length - si - no;
+  const renovId = 'renov'+suffix;
+  destroyChart(renovId);
+  const canvas2 = g('chartRenov'+suffix);
+  if(!canvas2) return;
+  CHARTS[renovId] = new Chart(canvas2, {
+    type: 'doughnut',
+    data: {
+      labels: ['Renovaron','No renovaron','Pendiente'],
+      datasets: [{ data: [si,no,pend], backgroundColor: ['#22C55E','#EF4444','#F59E0B'], borderWidth: 2, borderColor: ['rgba(34,197,94,.3)','rgba(239,68,68,.3)','rgba(245,158,11,.3)'] }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#9CA3AF', font: { family: 'Inter', size: 11 } } } } }
   });
 }
 
@@ -634,6 +1230,8 @@ function showMain(name, btn){
   document.querySelectorAll('.main-tab').forEach(t=>t.classList.remove('active'));
   g('page-'+name).classList.add('active');
   btn.classList.add('active');
+  // Hide time filter on docs page
+  g('timeFilterBar').style.display = (name==='docs') ? 'none' : 'flex';
 }
 function showEq(section, eq, btn){
   document.querySelectorAll('#page-'+section+' .eq-content').forEach(c=>c.classList.remove('active'));
@@ -658,25 +1256,24 @@ async function loadAll(){
     fetchSheet(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
   ]);
 
+  // Store raw data globally
+  RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.disp = dDisp; RAW.adh = dAdh;
+
   const allEq = [
     {label:'Equipo 1', rows:dEq1},
     {label:'Equipo 2', rows:dEq2},
     {label:'Equipo 3', rows:dEq3}
   ];
 
-  // Programa
   try{ renderPrograma(allEq); }catch(e){ console.error('Programa error',e); errores++; }
-
-  // Cierres
   try{ renderCierres(allEq); }catch(e){ console.error('Cierres error',e); errores++; }
-
-  // Disponibilidad
   if(dDisp.length){ try{ renderDisp(dDisp); }catch(e){ console.error('Disp error',e); errores++; } }
   else { ['disponibilidad-all','disponibilidad-eq1','disponibilidad-eq2','disponibilidad-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar DISPONIBILIDAD.'); }); errores++; }
-
-  // Adherencia
   if(dAdh.length){ try{ renderAdh(dAdh); }catch(e){ console.error('Adh error',e); errores++; } }
   else { ['adherencia-all','adherencia-eq1','adherencia-eq2','adherencia-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar ADHERENCIA.'); }); errores++; }
+
+  // Render charts
+  try{ renderHistorico(); }catch(e){ console.error('Historico error',e); errores++; }
 
   const ahora = new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
   if(errores===0) setStatus('ok','Actualizado '+ahora);
