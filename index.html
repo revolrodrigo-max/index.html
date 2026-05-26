@@ -686,6 +686,16 @@ function updateFilterInfo(){
     el.textContent = 'Mostrando: ' + (labels[FILTER.mode]||FILTER.mode);
   }
 }
+function getPeriodLabel(){
+  if(FILTER.mode === 'todo') return 'del mes';
+  const labels = {semana:'de la semana',mes:'del mes',trimestre:'del trimestre',semestre:'del semestre'};
+  if(labels[FILTER.mode]) return labels[FILTER.mode];
+  if(FILTER.from || FILTER.to){
+    const fmt = d => d ? d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '?';
+    return `del ${fmt(FILTER.from)} al ${fmt(FILTER.to)}`;
+  }
+  return 'del período';
+}
 
 /* ═══════════════════════════════════════
    RERENDER (after filter change)
@@ -710,12 +720,12 @@ function renderPrograma(allEq){
   const week = getWeekRange();
   const month = getMonthRange();
 
-  function statsFor(rows){
-    const activos = rows.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO');
-    const pausa = rows.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA'));
-    const total = rows.length;
-    const cierresSemana = rows.filter(r=>inRange(r.FIN, week));
-    const cierresMes = rows.filter(r=>inRange(r.FIN, month));
+  function statsFor(rows, rawRows){
+    const activos = rawRows.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO');
+    const pausa = rawRows.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA'));
+    const total = rawRows.length;
+    const cierresSemana = rawRows.filter(r=>inRange(r.FIN, week));
+    const cierresMes = rawRows.filter(r=>inRange(r.FIN, month));
     return {total, activos:activos.length, pausa:pausa.length, cierresSemana:cierresSemana.length, cierresMes:cierresMes.length};
   }
 
@@ -745,20 +755,23 @@ function renderPrograma(allEq){
       }).join('')}</div></div>`;
   }
 
+  const allRawProg = [...RAW.eq1, ...RAW.eq2, ...RAW.eq3];
   const allRows = [...allEq[0].rows, ...allEq[1].rows, ...allEq[2].rows];
-  const sAll = statsFor(allRows);
+  const sAll = statsFor(allRows, allRawProg);
   let allHTML = metricsHTML(sAll, 'Todos los equipos');
   allEq.forEach((eq, i) => {
-    const s = statsFor(eq.rows);
+    const rawRowsProg = [RAW.eq1, RAW.eq2, RAW.eq3][i];
+    const s = statsFor(eq.rows, rawRowsProg);
     allHTML += `<div class="eq-sep eq${i+1}"><i class="ti ti-users" style="font-size:14px"></i>${eq.label} — ${s.activos} activos · ${s.pausa} pausa · ${s.cierresSemana} cierres semana</div>`;
   });
-  allHTML += pausaListHTML(allRows);
+  allHTML += pausaListHTML(allRawProg);
   g('programa-all').innerHTML = allHTML;
 
   allEq.forEach((eq, i) => {
-    const s = statsFor(eq.rows);
+    const rawRowsProg = [RAW.eq1, RAW.eq2, RAW.eq3][i];
+    const s = statsFor(eq.rows, rawRowsProg);
     let html = metricsHTML(s, eq.label);
-    html += pausaListHTML(eq.rows);
+    html += pausaListHTML(rawRowsProg);
     g('programa-eq'+(i+1)).innerHTML = html;
   });
 }
@@ -769,6 +782,7 @@ function renderPrograma(allEq){
 function renderCierres(allEq){
   const week = getWeekRange();
   const month = getMonthRange();
+  const isCustomFilter = FILTER.mode !== 'todo';
 
   function cierresBadge(renov){
     const r = (renov||'').toUpperCase();
@@ -796,36 +810,52 @@ function renderCierres(allEq){
     }).join('')}</div>`;
   }
 
-  function cierresBlock(rows, label){
-    const cSem = rows.filter(r=>inRange(r.FIN, week));
-    const cMes = rows.filter(r=>inRange(r.FIN, month));
+  function cierresBlock(filteredRows, rawRows, label){
+    // Semana actual siempre desde datos crudos (KPI operativo fijo)
+    const cSem = rawRows.filter(r=>inRange(r.FIN, week));
     const siSem = cSem.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SÍ'||v==='SI';}).length;
     const noSem = cSem.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
     const pendSem = cSem.length - siSem - noSem;
-    const siMes = cMes.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SÍ'||v==='SI';}).length;
-    const noMes = cMes.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
+
+    // Sección de período: responde al filtro global
+    let periodRows, periodTitle, periodIcon;
+    if(!isCustomFilter){
+      periodRows = rawRows.filter(r=>inRange(r.FIN, month));
+      periodTitle = 'Cierres del mes';
+      periodIcon = 'ti-calendar-month';
+    } else {
+      // Con filtro activo: mostrar cierres del período seleccionado
+      periodRows = filteredRows.filter(r=>r.FIN);
+      periodTitle = `Cierres ${getPeriodLabel()}`;
+      periodIcon = 'ti-calendar-search';
+    }
+    const siPer = periodRows.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SÍ'||v==='SI';}).length;
+    const noPer = periodRows.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
+    const metricPerLabel = isCustomFilter ? 'Cierres período' : 'Cierres mes';
 
     return `<div class="metrics">
-      <div class="mc orange"><div class="mc-label">Cierres semana</div><div class="mc-val o">${cSem.length}</div><div class="mc-sub">${label}</div></div>
+      <div class="mc orange"><div class="mc-label">Cierres sem. actual</div><div class="mc-val o">${cSem.length}</div><div class="mc-sub">${label}</div></div>
       <div class="mc green"><div class="mc-label">Renovaron (sem)</div><div class="mc-val g">${siSem}</div></div>
       <div class="mc red"><div class="mc-label">No renovaron (sem)</div><div class="mc-val r">${noSem}</div></div>
       <div class="mc amber"><div class="mc-label">Pendientes (sem)</div><div class="mc-val a">${pendSem}</div></div>
-      <div class="mc purple"><div class="mc-label">Cierres mes</div><div class="mc-val p">${cMes.length}</div><div class="mc-sub">Renovaron: ${siMes} · No: ${noMes}</div></div>
+      <div class="mc purple"><div class="mc-label">${metricPerLabel}</div><div class="mc-val p">${periodRows.length}</div><div class="mc-sub">Renovaron: ${siPer} · No: ${noPer}</div></div>
     </div>
     <div class="section">
-      <div class="sec-hdr"><i class="ti ti-calendar-event" style="color:var(--orange)"></i><span class="sec-title">Cierres de la semana</span><span class="sec-badge sb-a">${cSem.length} pacientes</span></div>
+      <div class="sec-hdr"><i class="ti ti-calendar-event" style="color:var(--orange)"></i><span class="sec-title">Cierres de la semana actual</span><span class="sec-badge sb-a">${cSem.length} pacientes</span></div>
       ${cierreTable(cSem)}
     </div>
     <div class="section">
-      <div class="sec-hdr"><i class="ti ti-calendar-month" style="color:var(--purple)"></i><span class="sec-title">Cierres del mes</span><span class="sec-badge sb-gr">${cMes.length} pacientes</span></div>
-      ${cierreTable(cMes)}
+      <div class="sec-hdr"><i class="ti ${periodIcon}" style="color:var(--purple)"></i><span class="sec-title">${periodTitle}</span><span class="sec-badge sb-gr">${periodRows.length} pacientes</span></div>
+      ${cierreTable(periodRows)}
     </div>`;
   }
 
+  const allRawCierres = [...RAW.eq1, ...RAW.eq2, ...RAW.eq3];
   const allRows = [...allEq[0].rows, ...allEq[1].rows, ...allEq[2].rows];
-  g('cierres-all').innerHTML = cierresBlock(allRows, 'Todos los equipos');
+  g('cierres-all').innerHTML = cierresBlock(allRows, allRawCierres, 'Todos los equipos');
   allEq.forEach((eq, i) => {
-    g('cierres-eq'+(i+1)).innerHTML = cierresBlock(eq.rows, eq.label);
+    const rawRows = [RAW.eq1, RAW.eq2, RAW.eq3][i];
+    g('cierres-eq'+(i+1)).innerHTML = cierresBlock(eq.rows, rawRows, eq.label);
   });
 }
 
@@ -998,9 +1028,11 @@ function destroyChart(id){
 }
 
 function getWeekLabel(d){
-  const oneJan = new Date(d.getFullYear(),0,1);
-  const weekNum = Math.ceil((((d - oneJan) / 86400000) + oneJan.getDay()+1)/7);
-  return `S${weekNum}`;
+  // Show Monday DD/MM of the week for readability
+  const mon = new Date(d);
+  const day = mon.getDay();
+  mon.setDate(mon.getDate() - (day===0?6:day-1));
+  return `${String(mon.getDate()).padStart(2,'0')}/${String(mon.getMonth()+1).padStart(2,'0')}`;
 }
 
 function getMonthLabel(d){
@@ -1063,9 +1095,11 @@ function renderHistorico(){
   });
 
   // === CHART: Renovaciones pie ===
-  const totalSi = allRows.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SI'||v==='SÍ';}).length;
-  const totalNo = allRows.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
-  const totalPend = allRows.length - totalSi - totalNo;
+  // Solo contar pacientes cerrados (con FIN), no activos sin decisión de renovación
+  const cerradosRows = allRows.filter(r=>r.FIN);
+  const totalSi = cerradosRows.filter(r=>{const v=(r['RENOVÓ']||r.RENOVO||'').toUpperCase();return v==='SI'||v==='SÍ';}).length;
+  const totalNo = cerradosRows.filter(r=>(r['RENOVÓ']||r.RENOVO||'').toUpperCase()==='NO').length;
+  const totalPend = cerradosRows.length - totalSi - totalNo;
   destroyChart('renovaciones');
   const ctx2 = g('chartRenovaciones');
   if(ctx2) CHARTS.renovaciones = new Chart(ctx2, {
@@ -1106,10 +1140,22 @@ function renderHistorico(){
   });
 
   // === CHART: Niveles de riesgo (adherencia) ===
+  // Deduplicar por paciente: usar solo la entrada más reciente por paciente
+  const latestAdhMap = {};
+  adhRows.forEach(r=>{
+    const name = (r['NOMBRE PACIENTE']||r.PACIENTE||'').trim();
+    if(!name) return;
+    const existing = latestAdhMap[name];
+    if(!existing){ latestAdhMap[name] = r; return; }
+    const d1 = parseDate(r['FECHA REUNIÓN']||'');
+    const d2 = parseDate(existing['FECHA REUNIÓN']||'');
+    if(d1 && (!d2 || d1 > d2)) latestAdhMap[name] = r;
+  });
+  const latestAdhRows = Object.values(latestAdhMap);
   const countNivel = (arr,kw) => arr.filter(r=>(r['NIVEL RIESGO']||'').toLowerCase().includes(kw)).length;
-  const criticos = countNivel(adhRows,'crít') + countNivel(adhRows,'crit');
-  const moderados = countNivel(adhRows,'moder') + countNivel(adhRows,'bajo');
-  const monit = Math.max(adhRows.length - criticos - moderados, 0);
+  const criticos = countNivel(latestAdhRows,'crít') + countNivel(latestAdhRows,'crit');
+  const moderados = countNivel(latestAdhRows,'moder') + countNivel(latestAdhRows,'bajo');
+  const monit = Math.max(latestAdhRows.length - criticos - moderados, 0);
   destroyChart('riesgo');
   const ctx4 = g('chartRiesgo');
   if(ctx4) CHARTS.riesgo = new Chart(ctx4, {
@@ -1134,12 +1180,16 @@ function renderHistorico(){
   });
 
   // === CHART: Pacientes por equipo (bar horizontal) ===
-  const eq1Count = filterRows(RAW.eq1,'FIN').length;
-  const eq2Count = filterRows(RAW.eq2,'FIN').length;
-  const eq3Count = filterRows(RAW.eq3,'FIN').length;
-  const eq1Act = filterRows(RAW.eq1,'FIN').filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
-  const eq2Act = filterRows(RAW.eq2,'FIN').filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
-  const eq3Act = filterRows(RAW.eq3,'FIN').filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  // Usar RAW para mostrar estado real del programa, no afectado por filtro de fechas
+  const eq1Count = RAW.eq1.length;
+  const eq2Count = RAW.eq2.length;
+  const eq3Count = RAW.eq3.length;
+  const eq1Act = RAW.eq1.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  const eq2Act = RAW.eq2.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  const eq3Act = RAW.eq3.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  const eq1Pau = RAW.eq1.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA')).length;
+  const eq2Pau = RAW.eq2.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA')).length;
+  const eq3Pau = RAW.eq3.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA')).length;
   destroyChart('equipos');
   const ctx5 = g('chartEquipos');
   if(ctx5) CHARTS.equipos = new Chart(ctx5, {
@@ -1147,17 +1197,20 @@ function renderHistorico(){
     data: {
       labels: ['Equipo 1','Equipo 2','Equipo 3'],
       datasets: [
-        { label: 'Total', data: [eq1Count,eq2Count,eq3Count], backgroundColor: ['rgba(59,130,246,.5)','rgba(34,197,94,.5)','rgba(245,158,11,.5)'], borderRadius: 6, barPercentage: .6 },
-        { label: 'Activos', data: [eq1Act,eq2Act,eq3Act], backgroundColor: ['rgba(59,130,246,.9)','rgba(34,197,94,.9)','rgba(245,158,11,.9)'], borderRadius: 6, barPercentage: .6 }
+        { label: 'Activos', data: [eq1Act,eq2Act,eq3Act], backgroundColor: ['rgba(59,130,246,.9)','rgba(34,197,94,.9)','rgba(245,158,11,.9)'], borderRadius: 4, barPercentage: .7 },
+        { label: 'En pausa', data: [eq1Pau,eq2Pau,eq3Pau], backgroundColor: ['rgba(245,158,11,.5)','rgba(245,158,11,.5)','rgba(245,158,11,.5)'], borderRadius: 4, barPercentage: .7 },
+        { label: 'Total', data: [eq1Count,eq2Count,eq3Count], backgroundColor: ['rgba(59,130,246,.15)','rgba(34,197,94,.15)','rgba(245,158,11,.15)'], borderRadius: 4, barPercentage: .7 }
       ]
     },
     options: { ...JSON.parse(JSON.stringify(CHART_DEFAULTS)), indexAxis: 'y' }
   });
 
   // === CHART: Estado del programa (doughnut) ===
-  const allActivos = allRows.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
-  const allPausa = allRows.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA')).length;
-  const allOtros = allRows.length - allActivos - allPausa;
+  // Usar RAW para mostrar el estado real de todos los pacientes
+  const allRawStatus = [...RAW.eq1, ...RAW.eq2, ...RAW.eq3];
+  const allActivos = allRawStatus.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+  const allPausa = allRawStatus.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA')).length;
+  const allOtros = allRawStatus.length - allActivos - allPausa;
   destroyChart('estados');
   const ctx6 = g('chartEstados');
   if(ctx6) CHARTS.estados = new Chart(ctx6, {
