@@ -998,6 +998,9 @@ function renderDisp(data){
    RENDER: ADHERENCIA
    ═══════════════════════════════════════ */
 function renderAdh(data){
+  // data = filas filtradas (determina qué pacientes mostrar)
+  // RAW.adh se usa para el historial completo de cada paciente
+
   function nivelConfig(nivel){
     const n=(nivel||'').toLowerCase();
     if(n.includes('crít')||n.includes('crit')) return {rs:'rs-r',bx:'bx-r',label:'Crítico'};
@@ -1005,17 +1008,77 @@ function renderAdh(data){
     if(n.includes('bajo')) return {rs:'rs-a',bx:'bx-a',label:'Bajo avance'};
     return {rs:'rs-gr',bx:'bx-gr',label:'Monitoreo'};
   }
-  function adhCard(row, id){
-    const nombre = row['NOMBRE PACIENTE']||row.PACIENTE||'—';
-    const nivel = row['NIVEL RIESGO']||row.NIVEL||'';
-    const tipo = row['TIPO PROBLEMA']||'';
-    const ctx = row['CONTEXTO / SITUACIÓN']||row['CONTEXTO/SITUACIÓN']||row.CONTEXTO||'';
-    const accion = row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
-    const resp = row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'—';
-    const estado = row['ESTADO ACCIONABLE']||row.ESTADO||'PENDIENTE';
-    const fecha = row['FECHA LÍMITE']||row.FECHA||'';
+
+  /* Devuelve el historial completo de un paciente desde RAW.adh, más reciente primero */
+  function getPatientHistory(nombre){
+    return (RAW.adh||[])
+      .filter(r=>(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim()===nombre)
+      .sort((a,b)=>{
+        const da=parseDate(a['FECHA REUNIÓN']||''), db=parseDate(b['FECHA REUNIÓN']||'');
+        if(!da&&!db) return 0; if(!da) return 1; if(!db) return -1;
+        return db-da;
+      });
+  }
+
+  /* Construye mapa {nombre → fila_más_reciente} a partir de las filas recibidas */
+  function buildPatientMap(rows){
+    const map={};
+    rows.forEach(r=>{
+      const name=(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim();
+      if(!name) return;
+      if(!map[name]){map[name]=r;return;}
+      const d1=parseDate(r['FECHA REUNIÓN']||''), d2=parseDate(map[name]['FECHA REUNIÓN']||'');
+      if(d1&&(!d2||d1>d2)) map[name]=r;
+    });
+    return map;
+  }
+
+  /* Renderiza UNA entrada del historial (una fila del CSV) */
+  function historyEntry(row, isLatest){
+    const fechaReu   = row['FECHA REUNIÓN']||'';
+    const semana     = row['SEMANA ISO']||'';
+    const nivel      = row['NIVEL RIESGO']||row.NIVEL||'';
+    const tipo       = row['TIPO PROBLEMA']||'';
+    const ctx        = row['CONTEXTO / SITUACIÓN']||row['CONTEXTO/SITUACIÓN']||row.CONTEXTO||'';
+    const accion     = row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
+    const resp       = row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'—';
+    const estado     = row['ESTADO ACCIONABLE']||row['ESTADO']||'PENDIENTE';
+    const fechaLim   = row['FECHA LÍMITE']||row.FECHA||'';
+    const {bx,label} = nivelConfig(nivel);
+    const estadoBx   = estado.toUpperCase().includes('RESUELTO')?'bx-g':estado.toUpperCase().includes('PROCESO')?'bx-a':'bx-gr';
+    const borderCol  = isLatest ? 'var(--blue)' : 'var(--border2)';
+
+    return `<div style="border-left:2px solid ${borderCol};padding-left:12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted)">
+          <i class="ti ti-calendar" style="font-size:11px;vertical-align:middle"></i>
+          ${fechaReu||'Sin fecha'}${semana?' · Sem '+semana:''}
+        </span>
+        <span class="badge ${bx}" style="font-size:9px">${label}</span>
+        ${isLatest ? '<span class="badge bx-b" style="font-size:9px">Última entrada</span>' : ''}
+      </div>
+      ${tipo ? `<div style="font-size:11px;color:var(--muted2);margin-bottom:5px"><strong style="color:var(--text);font-weight:500">Problema:</strong> ${tipo}</div>` : ''}
+      ${ctx  ? `<div class="adh-ctx" style="font-size:10px;margin-bottom:6px">${ctx}</div>` : ''}
+      ${accion ? `<div style="font-size:11px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">
+        <div style="color:var(--text);margin-bottom:5px;line-height:1.4">→ ${accion}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="ac-resp"><i class="ti ti-user" style="font-size:9px"></i>${resp}</span>
+          <span class="badge ${estadoBx}" style="font-size:9px">${estado}</span>
+          ${fechaLim ? `<span style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">Límite: ${fechaLim}</span>` : ''}
+        </div>
+      </div>` : '<div style="font-size:11px;color:var(--muted);font-style:italic">Sin accionable registrado</div>'}
+    </div>`;
+  }
+
+  /* Renderiza la card completa de un paciente con todo su historial */
+  function adhCard(latestRow, allHistory, id){
+    const nombre  = (latestRow['NOMBRE PACIENTE']||latestRow.PACIENTE||'—').trim();
+    const nivel   = latestRow['NIVEL RIESGO']||latestRow.NIVEL||'';
     const {rs,bx,label} = nivelConfig(nivel);
-    const sub = [tipo, fecha?'Límite: '+fecha:'', estado].filter(Boolean).join(' · ');
+    const ultFecha    = latestRow['FECHA REUNIÓN']||'';
+    const cantEntradas = allHistory.length;
+    const histHTML = allHistory.map((r,i)=>historyEntry(r, i===0)).join('');
+
     return `<div class="adh-card" id="${id}">
       <div class="adh-hdr" onclick="this.parentElement.classList.toggle('open')">
         <div class="risk-stripe ${rs}"></div>
@@ -1023,37 +1086,60 @@ function renderAdh(data){
           <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
             <span class="adh-name">${nombre}</span>
             <span class="badge ${bx}">${label}</span>
+            <span class="badge bx-gr" style="font-size:9px">${cantEntradas} entrada${cantEntradas!==1?'s':''}</span>
           </div>
-          <div class="adh-sub">${sub||'Sin descripción'}</div>
+          <div class="adh-sub">${ultFecha ? 'Última reunión: '+ultFecha : 'Sin fecha registrada'}</div>
         </div>
         <i class="ti ti-chevron-down adh-chevron"></i>
       </div>
       <div class="adh-body">
-        ${ctx?`<div class="adh-ctx">${ctx}</div>`:''}
-        <div class="ac-list"><div class="ac-row">
-          <i class="ti ti-arrow-right" style="color:var(--blue)"></i>
-          <div>${accion||'Sin accionable registrado'}
-            <div><span class="ac-resp"><i class="ti ti-user" style="font-size:9px"></i>${resp}</span></div>
-          </div>
-        </div></div>
+        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);padding-bottom:8px">
+          <i class="ti ti-history" style="font-size:12px;vertical-align:middle"></i>
+          Historial completo — ${cantEntradas} registro${cantEntradas!==1?'s':''}
+        </div>
+        ${histHTML || '<div style="font-size:11px;color:var(--muted)">Sin registros históricos.</div>'}
       </div>
     </div>`;
   }
 
   function adhBlock(rows, label){
-    const count = (arr,kw) => arr.filter(r=>(r['NIVEL RIESGO']||'').toLowerCase().includes(kw)).length;
-    const criticos = count(rows,'crít') + count(rows,'crit');
-    const moderados = count(rows,'moder') + count(rows,'bajo');
-    const monit = Math.max(rows.length - criticos - moderados, 0);
+    // 1. Deduplicar: un objeto por paciente (la entrada más reciente del período)
+    const patientMap = buildPatientMap(rows);
+    const patients = Object.values(patientMap);
+
+    // 2. Ordenar: crítico > moderado > monitoreo, luego por fecha desc
+    const riskPrio = r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('crít')||n.includes('crit')?0:n.includes('moder')||n.includes('bajo')?1:2;};
+    patients.sort((a,b)=>{
+      const rp=riskPrio(a)-riskPrio(b); if(rp!==0) return rp;
+      const da=parseDate(a['FECHA REUNIÓN']||''),db=parseDate(b['FECHA REUNIÓN']||'');
+      if(!da&&!db) return 0; if(!da) return 1; if(!db) return -1; return db-da;
+    });
+
+    const criticos  = patients.filter(r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('crít')||n.includes('crit');}).length;
+    const moderados = patients.filter(r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('moder')||n.includes('bajo');}).length;
+    const monit     = Math.max(patients.length-criticos-moderados, 0);
+    const totalEntradas = rows.length; // todas las filas (no deduplicadas)
+
     return `<div class="metrics">
       <div class="mc red"><div class="mc-label">Críticos</div><div class="mc-val r">${criticos}</div><div class="mc-sub">Acción inmediata</div></div>
       <div class="mc amber"><div class="mc-label">Moderados</div><div class="mc-val a">${moderados}</div><div class="mc-sub">Seguimiento activo</div></div>
       <div class="mc"><div class="mc-label">Monitoreo</div><div class="mc-val m">${monit}</div><div class="mc-sub">Vigilancia</div></div>
-      <div class="mc blue"><div class="mc-label">Total en riesgo</div><div class="mc-val b">${rows.length}</div><div class="mc-sub">${label}</div></div>
+      <div class="mc blue"><div class="mc-label">Pacientes únicos</div><div class="mc-val b">${patients.length}</div><div class="mc-sub">${label} · ${totalEntradas} registros</div></div>
     </div>
     <div class="section">
-      <div class="sec-hdr"><i class="ti ti-alert-triangle" style="color:var(--amber)"></i><span class="sec-title">Pacientes en riesgo</span><span class="sec-badge sb-a">${rows.length} pacientes</span></div>
-      <div class="adh-list">${rows.length ? rows.map((r,i)=>adhCard(r, 'adh-'+label.replace(/\s/g,'')+'-'+i)).join('') : emptyState('Sin pacientes en riesgo.')}</div>
+      <div class="sec-hdr">
+        <i class="ti ti-alert-triangle" style="color:var(--amber)"></i>
+        <span class="sec-title">Historial por paciente</span>
+        <span class="sec-badge sb-a">${patients.length} pacientes</span>
+        <span class="sec-badge sb-gr" style="margin-left:6px">${totalEntradas} registros totales</span>
+      </div>
+      <div class="adh-list">${patients.length
+        ? patients.map((r,i)=>{
+            const nombre=(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim();
+            return adhCard(r, getPatientHistory(nombre), 'adh-'+label.replace(/\s/g,'')+'-'+i);
+          }).join('')
+        : emptyState('Sin pacientes en el período seleccionado.')
+      }</div>
     </div>`;
   }
 
@@ -1066,8 +1152,11 @@ function renderAdh(data){
   g('adherencia-eq2').innerHTML = adhBlock(eq2, 'Equipo 2');
   g('adherencia-eq3').innerHTML = adhBlock(eq3, 'Equipo 3');
 
-  data.forEach((r,i)=>{
-    if((r['NIVEL RIESGO']||'').toLowerCase().includes('crít')){
+  // Auto-expandir críticos
+  const allPatients = Object.values(buildPatientMap(data));
+  allPatients.sort((a,b)=>{const rp=((r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('crít')||n.includes('crit')?0:n.includes('moder')||n.includes('bajo')?1:2;})(a))-((r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('crít')||n.includes('crit')?0:n.includes('moder')||n.includes('bajo')?1:2;})(b));return rp;});
+  allPatients.forEach((r,i)=>{
+    if((r['NIVEL RIESGO']||'').toLowerCase().includes('crít')||(r['NIVEL RIESGO']||'').toLowerCase().includes('crit')){
       const el = document.getElementById('adh-Todoslosequipos-'+i);
       if(el) el.classList.add('open');
     }
