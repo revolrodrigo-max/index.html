@@ -548,9 +548,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
    CONFIG
    ═══════════════════════════════════════ */
 const URLS = {
-  eq1: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=312678916&single=true&output=csv',
-  eq2: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=42305981&single=true&output=csv',
-  eq3: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=2141207433&single=true&output=csv',
+  // Nuevas planillas de pacientes por equipo (fuente principal para Programa y Cierres)
+  eq1: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRd9PjjSPotj_R54s-yCiNfc3HASKolkXZycNM2UiBQ5V7JRrwpJneyYJx7THSX54qnw5gPdBmYEgIO/pub?gid=1557785795&single=true&output=csv',
+  eq2: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRR7VG5z2ICPJ2Kzi9wZ_SuXQ2ia1AQjSCn_w6oXgT3trrnkTjjXVFQZnbaeRawKa2NwHLaJQhZg0dL/pub?gid=1557785795&single=true&output=csv',
+  eq3: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRD6zm1NoNznMatzctdRU1etJ3jfR1FVHmMOW5hHLiSTcCBgRpquE6-jAHUL6gbsBq11kZTlXx_7FjQ/pub?gid=1557785795&single=true&output=csv',
   adherencia: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=770594017&single=true&output=csv',
   disponibilidad: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=578212844&single=true&output=csv',
 };
@@ -669,6 +670,24 @@ function setLoading(on){
   btn.classList.toggle('loading', on);
 }
 function emptyState(msg){ return `<div class="empty-state"><i class="ti ti-inbox"></i><p>${msg}</p></div>`; }
+
+/* ══ NORMALIZAR COLUMNAS — mapea nombres nuevos a los que usa el resto del código ══ */
+function normalizeEqRow(row){
+  // Fecha inicio: acepta INGRESO (eq1/eq2) o "Fecha Ingreso" (eq3)
+  if(!row.INICIO || !row.INICIO.trim())
+    row.INICIO = row.INGRESO || row['Fecha Ingreso'] || '';
+  // Fecha fin: acepta "SALIDA (automática)" o SALIDA
+  if(!row.FIN || !row.FIN.trim())
+    row.FIN = row['SALIDA (automática)'] || row.SALIDA || '';
+  // Duración: acepta DURACIÓN (con tilde) o DURACION
+  if(!row.DURACION || !row.DURACION.trim())
+    row.DURACION = row['DURACIÓN'] || '';
+  // Estado: normaliza casing (eq3 usa "Estado" en lugar de "ESTADO")
+  if(!row.ESTADO || !row.ESTADO.trim())
+    row.ESTADO = row.Estado || '';
+  return row;
+}
+function normalizeEqRows(rows){ rows.forEach(r => normalizeEqRow(r)); }
 
 /* ══ FIN CALCULADO ══ */
 function computeFin(row){
@@ -1549,8 +1568,11 @@ async function loadAll(){
     fetchSheet(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
   ]);
 
-  // Store raw data globally y calcular FIN = INICIO + DURACION cuando falta
+  // Almacenar datos globales
   RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.disp = dDisp; RAW.adh = dAdh;
+  // Normalizar columnas (nuevas planillas usan INGRESO/SALIDA/DURACIÓN en lugar de INICIO/FIN/DURACION)
+  normalizeEqRows(RAW.eq1); normalizeEqRows(RAW.eq2); normalizeEqRows(RAW.eq3);
+  // Calcular FIN = INICIO + DURACION cuando falta
   enrichRows(RAW.eq1); enrichRows(RAW.eq2); enrichRows(RAW.eq3);
 
   const allEq = [
