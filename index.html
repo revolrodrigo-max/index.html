@@ -89,6 +89,21 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .bx-o{background:var(--obg);color:var(--orange);border:1px solid var(--oborder)}
 
 .prof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+
+/* ═══ DISPONIBILIDAD SEMANAL ═══ */
+.disp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.disp-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:14px 15px;transition:border-color .15s}
+.disp-card:hover{border-color:var(--border2)}
+.disp-week{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:10px 0 8px}
+.disp-day{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:8px 4px;text-align:center;transition:border-color .15s}
+.disp-day.today{border-color:var(--blue);background:var(--bbg)}
+.disp-day-empty{opacity:.35}
+.disp-day-lbl{font-size:9px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.disp-day.today .disp-day-lbl{color:var(--blue);font-weight:600}
+.disp-day-val{font-size:13px;font-weight:700;font-family:'Syne',sans-serif;line-height:1;margin-bottom:3px}
+.disp-day-sub{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:4px;white-space:nowrap}
+.disp-day-bar{height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
+.disp-foot{display:flex;gap:14px;font-size:10px;color:var(--muted2);flex-wrap:wrap;font-family:'DM Mono',monospace;padding-top:8px;border-top:1px solid var(--border)}
 .prof-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:13px 15px;transition:border-color .15s}
 .prof-card:hover{border-color:var(--border2)}
 .prof-top{display:flex;align-items:center;gap:9px;margin-bottom:10px}
@@ -952,68 +967,148 @@ function renderCierres(allEq){
    RENDER: DISPONIBILIDAD
    ═══════════════════════════════════════ */
 function renderDisp(data){
-  function profCard(p){
-    const nombre = p.PROFESIONAL||'—';
-    const rol = p.ROL||'';
-    const ag = parseInt(p.AGENDADAS||0)||0;
-    const lib = parseInt(p.LIBRES||0)||0;
-    const tot = parseInt(p['CAP. MÁX']||0)||0;
-    const pct = parseFloat((p['OCUP. %']||'0').replace('%',''))||0;
-    const pctR = Math.min(Math.round(pct),100);
-    const bc = pct>=90?'bar-danger':pct>=65?'bar-warn':'bar-ok';
-    const bx = pct>=90?'bx-r':pct>=65?'bx-a':'bx-g';
-    const bl = pct>=99?'Saturado':pct>=90?'Alta':pct>=65?'Media':pct>=30?'Baja':'Disponible';
-    const av = pct>=90?'av-r':pct>=65?'av-a':'av-g';
-    const vc = pct>=90?'var(--red)':pct>=65?'var(--amber)':'var(--green)';
-    return `<div class="prof-card">
+  // Detectar formato: ¿hay filas con columna FECHA? → nuevo formato por día
+  const hasDate = data.some(r => r.FECHA && r.FECHA.trim());
+
+  if(!hasDate){
+    // ── FALLBACK: formato anterior (totales globales por profesional) ──
+    function profCardOld(p){
+      const nombre=p.PROFESIONAL||'—';
+      const rol=p.ROL||'';
+      const ag=parseInt(p.AGENDADAS||0)||0;
+      const lib=parseInt(p.LIBRES||0)||0;
+      const tot=parseInt(p['CAP. MÁX']||0)||0;
+      const pct=parseFloat((p['OCUP. %']||'0').replace('%',''))||0;
+      const pctR=Math.min(Math.round(pct),100);
+      const bc=pct>=90?'bar-danger':pct>=65?'bar-warn':'bar-ok';
+      const bx=pct>=90?'bx-r':pct>=65?'bx-a':'bx-g';
+      const bl=pct>=99?'Saturado':pct>=90?'Alta':pct>=65?'Media':pct>=30?'Baja':'Disponible';
+      const av=pct>=90?'av-r':pct>=65?'av-a':'av-g';
+      const vc=pct>=90?'var(--red)':pct>=65?'var(--amber)':'var(--green)';
+      return `<div class="prof-card"><div class="prof-top"><div class="av ${av}">${initials(nombre)}</div><div style="flex:1"><div class="prof-name">${nombre}</div><div class="prof-role">${rol}</div></div><span class="badge ${bx}">${bl}</span></div><div class="bar-wrap"><div class="bar-fill ${bc}" style="width:${pctR}%"></div></div><div class="prof-nums"><div class="pn"><div class="pn-val" style="color:var(--blue)">${ag}</div><div class="pn-lbl">agend.</div></div><div class="pn"><div class="pn-val" style="color:var(--green)">${lib}</div><div class="pn-lbl">libres</div></div><div class="pn"><div class="pn-val" style="color:var(--muted2)">${tot||'—'}</div><div class="pn-lbl">cap.max</div></div><div class="pn"><div class="pn-val" style="color:${vc}">${pctR}%</div><div class="pn-lbl">ocup.</div></div></div></div>`;
+    }
+    function dispBlockOld(profs, label){
+      const sorted=[...profs].sort((a,b)=>(parseFloat((b['OCUP. %']||'0').replace('%',''))||0)-(parseFloat((a['OCUP. %']||'0').replace('%',''))||0));
+      let tLib=0,tAg=0,sat=0,sum=0;
+      sorted.forEach(p=>{tLib+=parseInt(p.LIBRES||0)||0;tAg+=parseInt(p.AGENDADAS||0)||0;const pct=parseFloat((p['OCUP. %']||'0').replace('%',''))||0;sum+=pct;if(pct>=99)sat++;});
+      const prom=sorted.length?Math.round(sum/sorted.length):0;
+      return `<div class="metrics"><div class="mc blue"><div class="mc-label">Slots libres</div><div class="mc-val b">${tLib}</div><div class="mc-sub">${label}</div></div><div class="mc green"><div class="mc-label">Agendadas</div><div class="mc-val g">${tAg}</div></div><div class="mc red"><div class="mc-label">Saturados</div><div class="mc-val r">${sat}</div></div><div class="mc amber"><div class="mc-label">Ocup. promedio</div><div class="mc-val a">${prom}%</div></div></div><div class="section"><div class="sec-hdr"><i class="ti ti-calendar-stats" style="color:var(--blue)"></i><span class="sec-title">Profesionales</span><span class="sec-badge sb-b">${sorted.length}</span></div><div class="prof-grid">${sorted.length?sorted.map(profCardOld).join(''):emptyState('Sin datos.')}</div></div>`;
+    }
+    const eq1=data.filter(p=>(p.EQUIPO||'').includes('1'));
+    const eq2=data.filter(p=>(p.EQUIPO||'').includes('2'));
+    const eq3=data.filter(p=>(p.EQUIPO||'').includes('3'));
+    g('disponibilidad-all').innerHTML=dispBlockOld(data,'Todos los equipos');
+    g('disponibilidad-eq1').innerHTML=dispBlockOld(eq1,'Equipo 1');
+    g('disponibilidad-eq2').innerHTML=dispBlockOld(eq2,'Equipo 2');
+    g('disponibilidad-eq3').innerHTML=dispBlockOld(eq3,'Equipo 3');
+    return;
+  }
+
+  // ── NUEVO FORMATO: una fila por profesional por día ──
+  // Columnas: PROFESIONAL | ROL | EQUIPO | FECHA | AGENDADAS | LIBRES | CAP. MÁX
+  const week = getWeekRange();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const DAY_LABELS = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+  const WEEK_DAYS  = [1,2,3,4,5,6]; // Lun → Sáb
+
+  // Agrupar todas las filas por profesional
+  const profMap = {};
+  data.forEach(r=>{
+    const nombre=(r.PROFESIONAL||'').trim(); if(!nombre) return;
+    if(!profMap[nombre]) profMap[nombre]={nombre, rol:r.ROL||'', equipo:r.EQUIPO||'', rows:[]};
+    profMap[nombre].rows.push(r);
+  });
+
+  // Calcular resumen semanal de un profesional (memoizado inline)
+  function weekData(prof){
+    const dayMap={};
+    let totalAg=0, totalLib=0, totalCap=0;
+    prof.rows.forEach(r=>{
+      const d=parseDate(r.FECHA); if(!d||d<week.start||d>week.end) return;
+      const dow=d.getDay();
+      const ag=parseInt(r.AGENDADAS||0)||0;
+      const lib=parseInt(r.LIBRES||0)||0;
+      const cap=parseInt(r['CAP. MÁX']||0)||0;
+      if(!dayMap[dow]) dayMap[dow]={ag:0,lib:0,cap:0};
+      dayMap[dow].ag+=ag; dayMap[dow].lib+=lib; dayMap[dow].cap+=cap;
+      totalAg+=ag; totalLib+=lib; totalCap+=cap;
+    });
+    const pct=totalCap>0?Math.round(totalAg/totalCap*100):0;
+    return {dayMap,totalAg,totalLib,totalCap,pct};
+  }
+
+  function profCard(prof){
+    const {dayMap,totalAg,totalLib,totalCap,pct}=weekData(prof);
+    const av=pct>=90?'av-r':pct>=65?'av-a':'av-g';
+    const bx=pct>=90?'bx-r':pct>=65?'bx-a':'bx-g';
+    const bl=pct>=99?'Saturado':pct>=90?'Alta carga':pct>=65?'Media':pct>=20?'Disponible':'Muy libre';
+
+    const cells=WEEK_DAYS.map(dow=>{
+      const day=dayMap[dow];
+      const isTodayCol=(today.getDay()===dow && today>=week.start && today<=week.end);
+      const baseClass='disp-day'+(isTodayCol?' today':'')+(day?'':' disp-day-empty');
+
+      if(!day) return `<div class="${baseClass}">
+        <div class="disp-day-lbl">${DAY_LABELS[dow]}</div>
+        <div class="disp-day-val" style="color:var(--muted)">—</div>
+      </div>`;
+
+      const pctD=day.cap>0?Math.round(day.ag/day.cap*100):0;
+      const bc=pctD>=90?'bar-danger':pctD>=65?'bar-warn':'bar-ok';
+      const vc=pctD>=90?'var(--red)':pctD>=65?'var(--amber)':'var(--green)';
+      return `<div class="${baseClass}">
+        <div class="disp-day-lbl">${DAY_LABELS[dow]}</div>
+        <div class="disp-day-val" style="color:${vc}">${day.ag}/${day.cap}</div>
+        <div class="disp-day-sub">${day.lib} libre${day.lib!==1?'s':''}</div>
+        <div class="disp-day-bar"><div class="bar-fill ${bc}" style="width:${Math.min(pctD,100)}%"></div></div>
+      </div>`;
+    }).join('');
+
+    return `<div class="disp-card">
       <div class="prof-top">
-        <div class="av ${av}">${initials(nombre)}</div>
-        <div style="flex:1"><div class="prof-name">${nombre}</div><div class="prof-role">${rol}</div></div>
+        <div class="av ${av}">${initials(prof.nombre)}</div>
+        <div style="flex:1"><div class="prof-name">${prof.nombre}</div><div class="prof-role">${prof.rol}</div></div>
         <span class="badge ${bx}">${bl}</span>
       </div>
-      <div class="bar-wrap"><div class="bar-fill ${bc}" style="width:${pctR}%"></div></div>
-      <div class="prof-nums">
-        <div class="pn"><div class="pn-val" style="color:var(--blue)">${ag}</div><div class="pn-lbl">agend.</div></div>
-        <div class="pn"><div class="pn-val" style="color:var(--green)">${lib}</div><div class="pn-lbl">libres</div></div>
-        <div class="pn"><div class="pn-val" style="color:var(--muted2)">${tot||'—'}</div><div class="pn-lbl">cap.max</div></div>
-        <div class="pn"><div class="pn-val" style="color:${vc}">${pctR}%</div><div class="pn-lbl">ocup.</div></div>
+      <div class="disp-week">${cells}</div>
+      <div class="disp-foot">
+        <span><i class="ti ti-calendar-check" style="font-size:11px;vertical-align:middle"></i> ${totalAg} agend. semana</span>
+        <span style="color:var(--green)"><i class="ti ti-circle-plus" style="font-size:11px;vertical-align:middle"></i> ${totalLib} libres</span>
+        ${totalCap>0?`<span style="color:var(--muted)">Cap. ${totalCap} · ${pct}% ocupación</span>`:''}
       </div>
     </div>`;
   }
 
-  function dispBlock(profs, label){
-    const sorted = [...profs].sort((a,b)=>{
-      return (parseFloat((b['OCUP. %']||'0').replace('%',''))||0) - (parseFloat((a['OCUP. %']||'0').replace('%',''))||0);
-    });
-    let totalLib=0, totalAg=0, saturados=0, sumOcup=0;
-    sorted.forEach(p=>{
-      const lib = parseInt(p.LIBRES||0)||0;
-      const ag = parseInt(p.AGENDADAS||0)||0;
-      const pct = parseFloat((p['OCUP. %']||'0').replace('%',''))||0;
-      totalLib+=lib; totalAg+=ag; sumOcup+=pct;
-      if(pct>=99) saturados++;
-    });
-    const promOcup = sorted.length>0 ? Math.round(sumOcup/sorted.length) : 0;
+  function dispBlock(profList, label){
+    const profs=[...profList].sort((a,b)=>weekData(b).pct-weekData(a).pct);
+    let totLib=0, totAg=0, sat=0;
+    profs.forEach(p=>{const w=weekData(p);totLib+=w.totalLib;totAg+=w.totalAg;if(w.pct>=99)sat++;});
+    const promPct=profs.length?Math.round(profs.reduce((s,p)=>s+weekData(p).pct,0)/profs.length):0;
     return `<div class="metrics">
-      <div class="mc blue"><div class="mc-label">Horas libres</div><div class="mc-val b">${totalLib}h</div><div class="mc-sub">${label}</div></div>
-      <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g">${totalAg}</div></div>
-      <div class="mc red"><div class="mc-label">Saturados</div><div class="mc-val r">${saturados}</div><div class="mc-sub">100% ocupación</div></div>
-      <div class="mc amber"><div class="mc-label">Ocupación promedio</div><div class="mc-val a">${promOcup}%</div></div>
+      <div class="mc blue"><div class="mc-label">Slots libres semana</div><div class="mc-val b">${totLib}</div><div class="mc-sub">${label}</div></div>
+      <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g">${totAg}</div><div class="mc-sub">Semana actual</div></div>
+      <div class="mc red"><div class="mc-label">Saturados</div><div class="mc-val r">${sat}</div><div class="mc-sub">Sin disponibilidad</div></div>
+      <div class="mc amber"><div class="mc-label">Ocup. promedio</div><div class="mc-val a">${promPct}%</div><div class="mc-sub">Todos los días</div></div>
     </div>
     <div class="section">
-      <div class="sec-hdr"><i class="ti ti-calendar-stats" style="color:var(--blue)"></i><span class="sec-title">Profesionales</span><span class="sec-badge sb-b">${sorted.length} profesionales</span></div>
-      <div class="prof-grid">${sorted.length ? sorted.map(profCard).join('') : emptyState('Sin datos de disponibilidad.')}</div>
+      <div class="sec-hdr">
+        <i class="ti ti-calendar-week" style="color:var(--blue)"></i>
+        <span class="sec-title">Disponibilidad semanal</span>
+        <span class="sec-badge sb-b">${profs.length} profesionales</span>
+      </div>
+      <div class="disp-grid">${profs.length?profs.map(profCard).join(''):emptyState('Sin datos de disponibilidad para esta semana.')}</div>
     </div>`;
   }
 
-  const eq1 = data.filter(p=>(p.EQUIPO||'').includes('1'));
-  const eq2 = data.filter(p=>(p.EQUIPO||'').includes('2'));
-  const eq3 = data.filter(p=>(p.EQUIPO||'').includes('3'));
+  const profs=Object.values(profMap);
+  const eq1=profs.filter(p=>p.equipo.includes('1'));
+  const eq2=profs.filter(p=>p.equipo.includes('2'));
+  const eq3=profs.filter(p=>p.equipo.includes('3'));
 
-  g('disponibilidad-all').innerHTML = dispBlock(data, 'Todos los equipos');
-  g('disponibilidad-eq1').innerHTML = dispBlock(eq1, 'Equipo 1');
-  g('disponibilidad-eq2').innerHTML = dispBlock(eq2, 'Equipo 2');
-  g('disponibilidad-eq3').innerHTML = dispBlock(eq3, 'Equipo 3');
+  g('disponibilidad-all').innerHTML=dispBlock(profs,'Todos los equipos');
+  g('disponibilidad-eq1').innerHTML=dispBlock(eq1,'Equipo 1');
+  g('disponibilidad-eq2').innerHTML=dispBlock(eq2,'Equipo 2');
+  g('disponibilidad-eq3').innerHTML=dispBlock(eq3,'Equipo 3');
 }
 
 /* ═══════════════════════════════════════
