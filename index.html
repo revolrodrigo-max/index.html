@@ -104,6 +104,13 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .disp-day-sub{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:4px;white-space:nowrap}
 .disp-day-bar{height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
 .disp-foot{display:flex;gap:14px;font-size:10px;color:var(--muted2);flex-wrap:wrap;font-family:'DM Mono',monospace;padding-top:8px;border-top:1px solid var(--border)}
+.disp-card.disp-warn{border-color:var(--aborder);box-shadow:0 0 0 1px var(--aborder)}
+.disp-card.disp-warn::before{content:'';display:block;height:2px;background:var(--amber);border-radius:2px 2px 0 0;margin:-14px -15px 12px;border-radius:var(--r2) var(--r2) 0 0}
+.disp-card.disp-crit{border-color:var(--rborder);box-shadow:0 0 0 1px var(--rborder)}
+.disp-card.disp-crit::before{content:'';display:block;height:2px;background:var(--red);border-radius:2px 2px 0 0;margin:-14px -15px 12px;border-radius:var(--r2) var(--r2) 0 0}
+.disp-alert-banner{display:flex;align-items:center;gap:7px;background:var(--abg);border:1px solid var(--aborder);border-radius:var(--r);padding:5px 9px;margin-bottom:8px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace}
+.disp-alert-banner.crit{background:var(--rbg);border-color:var(--rborder);color:var(--red)}
+.disp-alert-banner i{font-size:13px;flex-shrink:0}
 .prof-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:13px 15px;transition:border-color .15s}
 .prof-card:hover{border-color:var(--border2)}
 .prof-top{display:flex;align-items:center;gap:9px;margin-bottom:10px}
@@ -1075,16 +1082,27 @@ function renderDisp(data){
       </div>`;
     }).join('');
 
-    return `<div class="disp-card">
+    // Alerta de baja disponibilidad semanal
+    const isCrit = totalLib === 0;
+    const isWarn = !isCrit && totalLib <= 3;
+    const cardClass = isCrit ? 'disp-card disp-crit' : isWarn ? 'disp-card disp-warn' : 'disp-card';
+    const alertBanner = isCrit
+      ? `<div class="disp-alert-banner crit"><i class="ti ti-alert-circle"></i> Sin disponibilidad esta semana</div>`
+      : isWarn
+      ? `<div class="disp-alert-banner"><i class="ti ti-alert-triangle"></i> Solo ${totalLib} slot${totalLib!==1?'s':''} libre${totalLib!==1?'s':''} esta semana</div>`
+      : '';
+
+    return `<div class="${cardClass}">
       <div class="prof-top">
         <div class="av ${av}">${initials(prof.nombre)}</div>
         <div style="flex:1"><div class="prof-name">${prof.nombre}</div><div class="prof-role">${prof.rol}</div></div>
         <span class="badge ${bx}">${bl}</span>
       </div>
+      ${alertBanner}
       <div class="disp-week">${cells}</div>
       <div class="disp-foot">
         <span><i class="ti ti-calendar-check" style="font-size:11px;vertical-align:middle"></i> ${totalAg} agend. semana</span>
-        <span style="color:var(--green)"><i class="ti ti-circle-plus" style="font-size:11px;vertical-align:middle"></i> ${totalLib} libres</span>
+        <span style="color:${isCrit?'var(--red)':isWarn?'var(--amber)':'var(--green)'}"><i class="ti ti-circle-plus" style="font-size:11px;vertical-align:middle"></i> ${totalLib} libres</span>
         ${totalCap>0?`<span style="color:var(--muted)">Cap. ${totalCap} · ${pct}% ocupación</span>`:''}
       </div>
     </div>`;
@@ -1092,12 +1110,13 @@ function renderDisp(data){
 
   function dispBlock(profList, label){
     const profs=[...profList].sort((a,b)=>weekData(b).pct-weekData(a).pct);
-    let totLib=0, totAg=0, sat=0;
-    profs.forEach(p=>{const w=weekData(p);totLib+=w.totalLib;totAg+=w.totalAg;if(w.pct>=99)sat++;});
+    let totLib=0, totAg=0, sat=0, alertas=0;
+    profs.forEach(p=>{const w=weekData(p);totLib+=w.totalLib;totAg+=w.totalAg;if(w.pct>=99)sat++;if(w.totalLib<=3)alertas++;});
     const promPct=profs.length?Math.round(profs.reduce((s,p)=>s+weekData(p).pct,0)/profs.length):0;
     return `<div class="metrics">
       <div class="mc blue"><div class="mc-label">Slots libres semana</div><div class="mc-val b">${totLib}</div><div class="mc-sub">${label}</div></div>
       <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g">${totAg}</div><div class="mc-sub">Semana actual</div></div>
+      ${alertas>0?`<div class="mc amber"><div class="mc-label">⚠ Baja disponibilidad</div><div class="mc-val a">${alertas}</div><div class="mc-sub">≤ 3 slots libres</div></div>`:''}
       <div class="mc red"><div class="mc-label">Saturados</div><div class="mc-val r">${sat}</div><div class="mc-sub">Sin disponibilidad</div></div>
       <div class="mc amber"><div class="mc-label">Ocup. promedio</div><div class="mc-val a">${promPct}%</div><div class="mc-sub">Todos los días</div></div>
     </div>
