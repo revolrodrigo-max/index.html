@@ -148,6 +148,20 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 .footer{padding:1.5rem;max-width:1440px;margin:0 auto;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;flex-wrap:wrap;gap:6px}
 
+/* ═══ BUSCADOR ADHERENCIA ═══ */
+.adh-search-bar{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r2)}
+.adh-search-wrap{flex:1;display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;transition:border-color .15s}
+.adh-search-wrap:focus-within{border-color:var(--blue)}
+.adh-search-wrap i{font-size:15px;color:var(--muted);flex-shrink:0}
+.adh-search-input{background:transparent;border:none;outline:none;color:var(--text);font-size:13px;font-family:'Inter',sans-serif;width:100%}
+.adh-search-input::placeholder{color:var(--muted)}
+.adh-search-clear{background:var(--s3);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;font-size:10px;color:var(--muted2);cursor:pointer;font-family:'Inter',sans-serif;display:none}
+.adh-search-clear:hover{color:var(--text)}
+.adh-search-results{font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.adh-card.adh-hidden{display:none}
+.adh-no-results{text-align:center;padding:32px 20px;color:var(--muted);font-size:12px;display:none}
+.adh-no-results i{font-size:28px;display:block;margin-bottom:8px;opacity:.4}
+
 /* ═══ TIME FILTER BAR ═══ */
 .time-filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);flex-wrap:wrap}
 .tf-label{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px}
@@ -293,6 +307,14 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     <button class="eq-tab eq1" onclick="showEq('adherencia','eq1',this)">Equipo 1</button>
     <button class="eq-tab eq2" onclick="showEq('adherencia','eq2',this)">Equipo 2</button>
     <button class="eq-tab eq3" onclick="showEq('adherencia','eq3',this)">Equipo 3</button>
+  </div>
+  <div class="adh-search-bar">
+    <div class="adh-search-wrap">
+      <i class="ti ti-search"></i>
+      <input class="adh-search-input" id="adhSearchInput" type="text" placeholder="Buscar paciente por nombre…" oninput="searchAdherencia(this.value)" autocomplete="off">
+    </div>
+    <button class="adh-search-clear" id="adhSearchClear" onclick="clearAdhSearch()">✕ Limpiar</button>
+    <div class="adh-search-results" id="adhSearchResults"></div>
   </div>
   <div id="adherencia-all" class="eq-content active"></div>
   <div id="adherencia-eq1" class="eq-content"></div>
@@ -1379,6 +1401,11 @@ function showEq(section, eq, btn){
   document.querySelectorAll('#page-'+section+' .eq-tab').forEach(t=>t.classList.remove('active'));
   g(section+'-'+eq).classList.add('active');
   btn.classList.add('active');
+  // Si es el panel de adherencia, re-aplicar la búsqueda activa al nuevo panel
+  if(section === 'adherencia'){
+    const input = g('adhSearchInput');
+    if(input) searchAdherencia(input.value);
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -1423,6 +1450,73 @@ async function loadAll(){
   else setStatus('err','Error al cargar');
   g('fechaFooter').textContent = 'Actualizado: '+new Date().toLocaleDateString('es-AR')+' '+ahora;
   setLoading(false);
+}
+
+/* ═══════════════════════════════════════
+   BUSCADOR ADHERENCIA
+   ═══════════════════════════════════════ */
+function searchAdherencia(query){
+  const q = (query||'').trim().toLowerCase();
+  const clearBtn = g('adhSearchClear');
+  const resultsEl = g('adhSearchResults');
+
+  // Mostrar/ocultar botón limpiar
+  clearBtn.style.display = q ? 'block' : 'none';
+
+  // Buscar en el panel activo actualmente
+  const activePanel = document.querySelector('#page-adherencia .eq-content.active');
+  if(!activePanel){ resultsEl.textContent = ''; return; }
+
+  const cards = activePanel.querySelectorAll('.adh-card');
+  let visible = 0;
+  let total = 0;
+
+  cards.forEach(card => {
+    const nameEl = card.querySelector('.adh-name');
+    const name = nameEl ? nameEl.textContent.toLowerCase() : '';
+    const match = !q || name.includes(q);
+    card.classList.toggle('adh-hidden', !match);
+    if(match){
+      visible++;
+      // Auto-expandir si hay búsqueda activa y solo un resultado
+    }
+    total++;
+  });
+
+  // Mostrar/ocultar mensaje "sin resultados"
+  let noResults = activePanel.querySelector('.adh-no-results');
+  if(!noResults){
+    noResults = document.createElement('div');
+    noResults.className = 'adh-no-results';
+    noResults.innerHTML = '<i class="ti ti-user-search"></i>Sin pacientes que coincidan con "<span class="adh-no-results-q"></span>"';
+    activePanel.appendChild(noResults);
+  }
+  const qSpan = noResults.querySelector('.adh-no-results-q');
+  if(qSpan) qSpan.textContent = query;
+  noResults.style.display = (q && visible === 0) ? 'block' : 'none';
+
+  // Auto-expandir si hay exactamente un resultado
+  if(q && visible === 1){
+    cards.forEach(card => {
+      if(!card.classList.contains('adh-hidden')) card.classList.add('open');
+    });
+  }
+
+  // Contador de resultados
+  if(q){
+    resultsEl.textContent = visible === total
+      ? `${total} pacientes`
+      : `${visible} de ${total} pacientes`;
+  } else {
+    resultsEl.textContent = total ? `${total} pacientes` : '';
+  }
+}
+
+function clearAdhSearch(){
+  const input = g('adhSearchInput');
+  input.value = '';
+  input.focus();
+  searchAdherencia('');
 }
 
 /* ═══════════════════════════════════════
