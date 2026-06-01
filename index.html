@@ -612,9 +612,16 @@ function g(id){ return document.getElementById(id); }
 function initials(n){ return (n||'').split(' ').slice(0,2).map(w=>(w||'')[0]||'').join('').toUpperCase()||'?'; }
 function parseDate(str){
   if(!str) return null;
-  const p = str.split('/');
+  const p = str.trim().split('/');
+  if(p.length===2){
+    // DD/MM sin año → asume año actual
+    const y = new Date().getFullYear();
+    const d = new Date(y, parseInt(p[1])-1, parseInt(p[0]));
+    return isNaN(d.getTime()) ? null : d;
+  }
   if(p.length!==3) return null;
-  return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  const d = new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+  return isNaN(d.getTime()) ? null : d;
 }
 function getWeekRange(){
   const now = new Date();
@@ -967,8 +974,11 @@ function renderCierres(allEq){
    RENDER: DISPONIBILIDAD
    ═══════════════════════════════════════ */
 function renderDisp(data){
-  // Detectar formato: ¿hay filas con columna FECHA? → nuevo formato por día
-  const hasDate = data.some(r => r.FECHA && r.FECHA.trim());
+  // Detectar formato:
+  //  - Nuevo (long): tiene columna FECHA explícita y columnas AGENDADAS + LIBRES
+  //  - Viejo (wide): columnas de fecha como "01/06", "02/06", etc.
+  const hasDate = data.length > 0 && data.some(r => r.FECHA && r.FECHA.trim()) &&
+                  data.some(r => r.AGENDADAS !== undefined);
 
   if(!hasDate){
     // ── FALLBACK: formato anterior (totales globales por profesional) ──
@@ -1028,7 +1038,8 @@ function renderDisp(data){
       const dow=d.getDay();
       const ag=parseInt(r.AGENDADAS||0)||0;
       const lib=parseInt(r.LIBRES||0)||0;
-      const cap=parseInt(r['CAP. MÁX']||0)||0;
+      // CAP. MÁX puede no existir → derivar de AGENDADAS + LIBRES
+      const cap=parseInt(r['CAP. MÁX']||0)||0 || (ag+lib);
       if(!dayMap[dow]) dayMap[dow]={ag:0,lib:0,cap:0};
       dayMap[dow].ag+=ag; dayMap[dow].lib+=lib; dayMap[dow].cap+=cap;
       totalAg+=ag; totalLib+=lib; totalCap+=cap;
