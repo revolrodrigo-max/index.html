@@ -676,9 +676,12 @@ function normalizeEqRow(row){
   // Fecha inicio: acepta INGRESO (eq1/eq2) o "Fecha Ingreso" (eq3)
   if(!row.INICIO || !row.INICIO.trim())
     row.INICIO = row.INGRESO || row['Fecha Ingreso'] || '';
-  // Fecha fin: acepta "SALIDA (automática)" o SALIDA
+  // Fecha fin: acepta "SALIDA (automática)" o SALIDA (con o sin salto de línea en el header del CSV)
   if(!row.FIN || !row.FIN.trim())
-    row.FIN = row['SALIDA (automática)'] || row.SALIDA || '';
+    row.FIN = row['SALIDA (automática)'] || row['SALIDA\n(automática)']
+           || row.SALIDA
+           || (Object.entries(row).find(([k]) => k.startsWith('SALIDA')) || [])[1]
+           || '';
   // Duración: acepta DURACIÓN (con tilde) o DURACION
   if(!row.DURACION || !row.DURACION.trim())
     row.DURACION = row['DURACIÓN'] || '';
