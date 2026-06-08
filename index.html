@@ -13,7 +13,7 @@
   --bg:#0A0C0F;--s1:#111318;--s2:#181C22;--s3:#1E232B;
   --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
   --text:#E8EDF3;--muted:#6B7280;--muted2:#9CA3AF;
-  --green:#22C55E;--gbg:rgba(34,197,94,.1);--gborder:rgba(34,197,94,.25);
+  --green:#00C4AA;--gbg:rgba(0,196,170,.1);--gborder:rgba(0,196,170,.25);
   --amber:#F59E0B;--abg:rgba(245,158,11,.1);--aborder:rgba(245,158,11,.25);
   --red:#EF4444;--rbg:rgba(239,68,68,.1);--rborder:rgba(239,68,68,.25);
   --blue:#3B82F6;--bbg:rgba(59,130,246,.1);--bborder:rgba(59,130,246,.25);
@@ -241,9 +241,14 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 .adh2-grid-full{display:flex;flex-direction:column;gap:10px}
 .adh2-grid-2col{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.adh2-grid-mod{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:12px}
 
 .adh2-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);border-top-width:2px;padding:14px 16px;transition:border-color .15s}
 .adh2-card:hover{border-color:var(--border2)}
+.adh2-card.mod{background:linear-gradient(160deg,rgba(245,158,11,.06) 0%,var(--s1) 55%);border-top-width:3px}
+.adh2-card.mod:hover{border-color:var(--aborder)}
+.adh2-mod-av{width:34px;height:34px;border-radius:50%;background:rgba(245,158,11,.15);border:1px solid var(--aborder);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'Syne',sans-serif;color:var(--amber);flex-shrink:0;margin-top:1px}
+.adh2-ctx.full{-webkit-line-clamp:unset;overflow:visible;display:block;border-left:2px solid var(--aborder)}
 .adh2-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
 .adh2-left{flex:1;min-width:0}
 .adh2-name-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:4px}
@@ -1320,6 +1325,55 @@ function renderAdh(data){
     </div>`;
   }
 
+  /* Card Moderado — con avatar amber, contexto completo y tinte cálido */
+  function moderadoCard(row){
+    const nombre=(row['NOMBRE PACIENTE']||row.PACIENTE||'—').trim();
+    const tipo=row['TIPO PROBLEMA']||'';
+    const ctx=row['CONTEXTO / SITUACIÓN']||row['CONTEXTO/SITUACIÓN']||row.CONTEXTO||'';
+    const accion=row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
+    const resp=row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'—';
+    const fechaLim=row['FECHA LÍMITE']||row.FECHA||'';
+    const estado=row['ESTADO ACCIONABLE']||row['ESTADO']||'PENDIENTE';
+    const cardId='pc-'+nombre.replace(/[^a-zA-Z0-9]/g,'-');
+    const sk='adhs_'+cardId;
+    const stored=sessionStorage.getItem(sk);
+    const efectivo=stored||estado;
+    const isDone=efectivo.toUpperCase().includes('RESUELTO')||efectivo.toUpperCase().includes('HECHO');
+    const histCount=(RAW.adh||[]).filter(r=>(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim()===nombre).length;
+    const safeNombre=nombre.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+    return `<div class="adh2-card mod" id="${cardId}" style="border-top-color:var(--amber)">
+      <div class="adh2-top">
+        <div class="adh2-mod-av">${initials(nombre)}</div>
+        <div class="adh2-left">
+          <div class="adh2-name-row">
+            <span class="adh2-name" onclick="openPatientPanel('${safeNombre}')">${nombre}</span>
+            <span class="badge bx-a" style="font-size:9px">Moderado</span>
+          </div>
+          ${tipo?`<div class="adh2-tipo"><i class="ti ti-tag"></i>${tipo}</div>`:''}
+          ${ctx?`<div class="adh2-ctx full">${ctx}</div>`:''}
+        </div>
+        <button class="adh2-hist-btn" onclick="openPatientPanel('${safeNombre}')">
+          <i class="ti ti-history"></i><span>${histCount} entrada${histCount!==1?'s':''}</span>
+        </button>
+      </div>
+      ${accion
+        ?`<div class="adh2-accionable" style="border-color:var(--aborder)">
+            <div class="adh2-ac-text"><i class="ti ti-arrow-narrow-right" style="color:var(--amber)"></i><span>${accion}</span></div>
+            <div class="adh2-ac-footer">
+              <span class="ac-resp"><i class="ti ti-user" style="font-size:9px"></i>${resp}</span>
+              ${fechaLim?`<span style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace"><i class="ti ti-clock" style="font-size:10px;vertical-align:middle"></i> ${fechaLim}</span>`:''}
+              <button class="adh2-status-btn${isDone?' done':''}" onclick="toggleAdhStatus(this,'${sk}')">
+                <i class="ti ${isDone?'ti-circle-check':'ti-circle'}"></i>
+                <span>${isDone?'Hecho':'Pendiente'}</span>
+              </button>
+            </div>
+          </div>`
+        :`<div class="adh2-accionable adh2-no-ac"><i class="ti ti-minus"></i>Sin accionable registrado</div>`
+      }
+    </div>`;
+  }
+
   /* Card compacta (Monitoreo) */
   function monitCard(row){
     const nombre=(row['NOMBRE PACIENTE']||row.PACIENTE||'—').trim();
@@ -1372,7 +1426,7 @@ function renderAdh(data){
           <span class="sec-title">Moderados</span>
           <span class="sec-badge sb-a">${moderados.length}</span>
         </div>
-        <div class="adh2-grid-2col">${moderados.map(r=>patientCard(r)).join('')}</div>
+        <div class="adh2-grid-mod">${moderados.map(r=>moderadoCard(r)).join('')}</div>
       </div>`;
     }
 
