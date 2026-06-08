@@ -228,6 +228,78 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .doc-kpi-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);font-size:11px}
 .doc-kpi-name{font-weight:500;min-width:120px}
 .doc-kpi-formula{color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;flex:1}
+
+/* ═══ ADHERENCIA V2 — Vista por Reunión ═══ */
+.adh2-nav{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;padding:10px 14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);flex-wrap:wrap}
+.adh2-nav-label{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+.adh2-nav-label i{font-size:13px}
+.adh2-pills{display:flex;gap:5px;flex-wrap:wrap}
+.adh2-pill{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;transition:all .15s;white-space:nowrap}
+.adh2-pill:hover:not(.active){color:var(--muted2);border-color:var(--muted)}
+.adh2-pill.active{background:var(--bbg);color:var(--blue);border-color:var(--bborder)}
+.adh2-meeting-view{display:none}.adh2-meeting-view.active{display:block}
+
+.adh2-grid-full{display:flex;flex-direction:column;gap:10px}
+.adh2-grid-2col{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+
+.adh2-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);border-top-width:2px;padding:14px 16px;transition:border-color .15s}
+.adh2-card:hover{border-color:var(--border2)}
+.adh2-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.adh2-left{flex:1;min-width:0}
+.adh2-name-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:4px}
+.adh2-name{font-size:13px;font-weight:600;cursor:pointer;color:var(--text);transition:color .15s}
+.adh2-name:hover{color:var(--blue);text-decoration:underline}
+.adh2-tipo{font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.adh2-ctx{font-size:11px;color:var(--muted2);line-height:1.6;background:var(--s2);padding:8px 10px;border-left:2px solid var(--border2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.adh2-actions{display:flex;flex-direction:column;gap:5px;flex-shrink:0}
+.adh2-hist-btn{display:flex;align-items:center;gap:4px;background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:4px 9px;color:var(--muted2);font-size:10px;cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s;white-space:nowrap}
+.adh2-hist-btn:hover{color:var(--blue);border-color:var(--bborder)}
+.adh2-hist-btn i{font-size:12px}
+
+.adh2-accionable{display:flex;flex-direction:column;gap:7px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px}
+.adh2-no-ac{flex-direction:row;align-items:center;gap:6px;color:var(--muted);font-size:11px;font-style:italic}
+.adh2-ac-text{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:var(--text);line-height:1.5}
+.adh2-ac-text i{flex-shrink:0;margin-top:1px}
+.adh2-ac-footer{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.adh2-status-btn{display:inline-flex;align-items:center;gap:4px;background:var(--s3);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--muted2);cursor:pointer;font-family:'DM Mono',monospace;transition:all .2s;margin-left:auto}
+.adh2-status-btn:hover{border-color:var(--gborder);color:var(--green)}
+.adh2-status-btn.done{background:var(--gbg);border-color:var(--gborder);color:var(--green)}
+.adh2-status-btn i{font-size:12px}
+
+.adh2-monit-list{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.adh2-monit-card{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:9px 12px;transition:border-color .15s}
+.adh2-monit-card:hover{border-color:var(--border2)}
+.adh2-monit-left{display:flex;align-items:center;gap:9px;flex:1;min-width:0}
+.adh2-monit-av{width:28px;height:28px;border-radius:50%;background:var(--s3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;font-family:'Syne',sans-serif;flex-shrink:0;color:var(--muted2)}
+.adh2-monit-name{font-size:12px;font-weight:500;cursor:pointer;transition:color .15s}
+.adh2-monit-name:hover{color:var(--blue)}
+.adh2-monit-ac{font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+
+.adh2-monit-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 0;user-select:none}
+.adh2-monit-toggle:hover .sec-title{color:var(--muted2)}
+.adh2-chevron-icon{margin-left:auto;color:var(--muted);font-size:14px;transition:transform .2s}
+.adh2-chevron-icon.open{transform:rotate(180deg)}
+
+/* ── Patient History Side Panel ── */
+.ph-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(3px);z-index:500;display:none;cursor:pointer}
+.ph-overlay.open{display:block}
+.ph-panel{position:fixed;top:0;right:0;bottom:0;width:min(520px,96vw);background:var(--s1);border-left:1px solid var(--border2);z-index:501;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1)}
+.ph-panel.open{transform:translateX(0)}
+.ph-hdr{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--s1);z-index:1;flex-shrink:0}
+.ph-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph-subtitle{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+.ph-close{background:var(--s2);border:1px solid var(--border2);border-radius:6px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted2);transition:all .15s;flex-shrink:0}
+.ph-close:hover{color:var(--text);border-color:var(--muted)}
+.ph-close i{font-size:15px}
+.ph-body{padding:18px;overflow-y:auto;flex:1}
+.ph-entry{border-left:2px solid var(--border2);padding-left:14px;margin-bottom:18px}
+.ph-entry.latest{border-left-color:var(--blue)}
+.ph-entry-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px}
+.ph-entry-date{font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);display:flex;align-items:center;gap:4px}
+.ph-ctx{font-size:11px;color:var(--muted2);line-height:1.6;background:var(--s2);padding:8px 10px;border-left:2px solid var(--border2);margin-bottom:8px}
+.ph-ac{font-size:11px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-top:6px}
+.ph-ac-text{color:var(--text);margin-bottom:5px;line-height:1.4}
+.ph-ac-footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -330,18 +402,23 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     <button class="eq-tab eq2" onclick="showEq('adherencia','eq2',this)">Equipo 2</button>
     <button class="eq-tab eq3" onclick="showEq('adherencia','eq3',this)">Equipo 3</button>
   </div>
-  <div class="adh-search-bar">
-    <div class="adh-search-wrap">
-      <i class="ti ti-search"></i>
-      <input class="adh-search-input" id="adhSearchInput" type="text" placeholder="Buscar paciente por nombre…" oninput="searchAdherencia(this.value)" autocomplete="off">
-    </div>
-    <button class="adh-search-clear" id="adhSearchClear" onclick="clearAdhSearch()">✕ Limpiar</button>
-    <div class="adh-search-results" id="adhSearchResults"></div>
-  </div>
   <div id="adherencia-all" class="eq-content active"></div>
   <div id="adherencia-eq1" class="eq-content"></div>
   <div id="adherencia-eq2" class="eq-content"></div>
   <div id="adherencia-eq3" class="eq-content"></div>
+</div>
+
+<!-- ══ PATIENT HISTORY PANEL ══ -->
+<div class="ph-overlay" id="phOverlay" onclick="closePatientPanel()"></div>
+<div class="ph-panel" id="phPanel">
+  <div class="ph-hdr">
+    <div style="flex:1;min-width:0">
+      <div class="ph-title" id="phName">—</div>
+      <div class="ph-subtitle" id="phSubtitle"></div>
+    </div>
+    <button class="ph-close" onclick="closePatientPanel()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="ph-body" id="phBody"></div>
 </div>
 
 <!-- ══ HISTÓRICO (gráficos) ══ -->
@@ -1164,172 +1241,286 @@ function renderDisp(data){
 }
 
 /* ═══════════════════════════════════════
-   RENDER: ADHERENCIA
+   RENDER: ADHERENCIA V2 — Vista por Reunión
    ═══════════════════════════════════════ */
 function renderAdh(data){
-  // data = filas filtradas (determina qué pacientes mostrar)
-  // RAW.adh se usa para el historial completo de cada paciente
 
-  function nivelConfig(nivel){
+  function nivelCfg(nivel){
     const n=(nivel||'').toLowerCase();
-    if(n.includes('crít')||n.includes('crit')) return {rs:'rs-r',bx:'bx-r',label:'Crítico'};
-    if(n.includes('moder')) return {rs:'rs-a',bx:'bx-a',label:'Moderado'};
-    if(n.includes('bajo')) return {rs:'rs-a',bx:'bx-a',label:'Bajo avance'};
-    return {rs:'rs-gr',bx:'bx-gr',label:'Monitoreo'};
+    if(n.includes('crít')||n.includes('crit')) return {bx:'bx-r',label:'Crítico',prio:0,color:'var(--red)'};
+    if(n.includes('moder')||n.includes('bajo')) return {bx:'bx-a',label:'Moderado',prio:1,color:'var(--amber)'};
+    return {bx:'bx-gr',label:'Monitoreo',prio:2,color:'var(--muted)'};
   }
 
-  /* Devuelve el historial completo de un paciente desde RAW.adh, más reciente primero */
-  function getPatientHistory(nombre){
-    return (RAW.adh||[])
-      .filter(r=>(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim()===nombre)
-      .sort((a,b)=>{
-        const da=parseDate(a['FECHA REUNIÓN']||''), db=parseDate(b['FECHA REUNIÓN']||'');
-        if(!da&&!db) return 0; if(!da) return 1; if(!db) return -1;
-        return db-da;
-      });
+  function getUniqueDates(rows){
+    const seen=new Set(), dates=[];
+    rows.forEach(r=>{ const f=(r['FECHA REUNIÓN']||'').trim(); if(f&&!seen.has(f)){seen.add(f);dates.push(f);} });
+    dates.sort((a,b)=>{ const da=parseDate(a),db=parseDate(b); if(!da&&!db) return 0; if(!da) return 1; if(!db) return -1; return db-da; });
+    return dates;
   }
 
-  /* Construye mapa {nombre → fila_más_reciente} a partir de las filas recibidas */
-  function buildPatientMap(rows){
+  function buildLatestMap(rows){
     const map={};
     rows.forEach(r=>{
-      const name=(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim();
-      if(!name) return;
+      const name=(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim(); if(!name) return;
       if(!map[name]){map[name]=r;return;}
-      const d1=parseDate(r['FECHA REUNIÓN']||''), d2=parseDate(map[name]['FECHA REUNIÓN']||'');
+      const d1=parseDate(r['FECHA REUNIÓN']||''),d2=parseDate(map[name]['FECHA REUNIÓN']||'');
       if(d1&&(!d2||d1>d2)) map[name]=r;
     });
-    return map;
+    return Object.values(map);
   }
 
-  /* Renderiza UNA entrada del historial (una fila del CSV) */
-  function historyEntry(row, isLatest){
-    const fechaReu   = row['FECHA REUNIÓN']||'';
-    const semana     = row['SEMANA ISO']||'';
-    const nivel      = row['NIVEL RIESGO']||row.NIVEL||'';
-    const tipo       = row['TIPO PROBLEMA']||'';
-    const ctx        = row['CONTEXTO / SITUACIÓN']||row['CONTEXTO/SITUACIÓN']||row.CONTEXTO||'';
-    const accion     = row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
-    const resp       = row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'—';
-    const estado     = row['ESTADO ACCIONABLE']||row['ESTADO']||'PENDIENTE';
-    const fechaLim   = row['FECHA LÍMITE']||row.FECHA||'';
-    const {bx,label} = nivelConfig(nivel);
-    const estadoBx   = estado.toUpperCase().includes('RESUELTO')?'bx-g':estado.toUpperCase().includes('PROCESO')?'bx-a':'bx-gr';
-    const borderCol  = isLatest ? 'var(--blue)' : 'var(--border2)';
+  /* Card expandida (Críticos y Moderados) */
+  function patientCard(row){
+    const nombre=(row['NOMBRE PACIENTE']||row.PACIENTE||'—').trim();
+    const nivel=row['NIVEL RIESGO']||row.NIVEL||'';
+    const tipo=row['TIPO PROBLEMA']||'';
+    const ctx=row['CONTEXTO / SITUACIÓN']||row['CONTEXTO/SITUACIÓN']||row.CONTEXTO||'';
+    const accion=row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
+    const resp=row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'—';
+    const fechaLim=row['FECHA LÍMITE']||row.FECHA||'';
+    const estado=row['ESTADO ACCIONABLE']||row['ESTADO']||'PENDIENTE';
+    const {bx,label,color}=nivelCfg(nivel);
+    const cardId='pc-'+nombre.replace(/[^a-zA-Z0-9]/g,'-');
+    const sk='adhs_'+cardId;
+    const stored=sessionStorage.getItem(sk);
+    const efectivo=stored||estado;
+    const isDone=efectivo.toUpperCase().includes('RESUELTO')||efectivo.toUpperCase().includes('HECHO');
+    const histCount=(RAW.adh||[]).filter(r=>(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim()===nombre).length;
+    const safeNombre=nombre.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
-    return `<div style="border-left:2px solid ${borderCol};padding-left:12px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
-        <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted)">
-          <i class="ti ti-calendar" style="font-size:11px;vertical-align:middle"></i>
-          ${fechaReu||'Sin fecha'}${semana?' · Sem '+semana:''}
-        </span>
-        <span class="badge ${bx}" style="font-size:9px">${label}</span>
-        ${isLatest ? '<span class="badge bx-b" style="font-size:9px">Última entrada</span>' : ''}
-      </div>
-      ${tipo ? `<div style="font-size:11px;color:var(--muted2);margin-bottom:5px"><strong style="color:var(--text);font-weight:500">Problema:</strong> ${tipo}</div>` : ''}
-      ${ctx  ? `<div class="adh-ctx" style="font-size:10px;margin-bottom:6px">${ctx}</div>` : ''}
-      ${accion ? `<div style="font-size:11px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">
-        <div style="color:var(--text);margin-bottom:5px;line-height:1.4">→ ${accion}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span class="ac-resp"><i class="ti ti-user" style="font-size:9px"></i>${resp}</span>
-          <span class="badge ${estadoBx}" style="font-size:9px">${estado}</span>
-          ${fechaLim ? `<span style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">Límite: ${fechaLim}</span>` : ''}
-        </div>
-      </div>` : '<div style="font-size:11px;color:var(--muted);font-style:italic">Sin accionable registrado</div>'}
-    </div>`;
-  }
-
-  /* Renderiza la card completa de un paciente con todo su historial */
-  function adhCard(latestRow, allHistory, id){
-    const nombre  = (latestRow['NOMBRE PACIENTE']||latestRow.PACIENTE||'—').trim();
-    const nivel   = latestRow['NIVEL RIESGO']||latestRow.NIVEL||'';
-    const {rs,bx,label} = nivelConfig(nivel);
-    const ultFecha    = latestRow['FECHA REUNIÓN']||'';
-    const cantEntradas = allHistory.length;
-    const histHTML = allHistory.map((r,i)=>historyEntry(r, i===0)).join('');
-
-    return `<div class="adh-card" id="${id}">
-      <div class="adh-hdr" onclick="this.parentElement.classList.toggle('open')">
-        <div class="risk-stripe ${rs}"></div>
-        <div class="adh-name-block">
-          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-            <span class="adh-name">${nombre}</span>
-            <span class="badge ${bx}">${label}</span>
-            <span class="badge bx-gr" style="font-size:9px">${cantEntradas} entrada${cantEntradas!==1?'s':''}</span>
+    return `<div class="adh2-card" id="${cardId}" style="border-top-color:${color}">
+      <div class="adh2-top">
+        <div class="adh2-left">
+          <div class="adh2-name-row">
+            <span class="adh2-name" onclick="openPatientPanel('${safeNombre}')">${nombre}</span>
+            <span class="badge ${bx}" style="font-size:9px">${label}</span>
           </div>
-          <div class="adh-sub">${ultFecha ? 'Última reunión: '+ultFecha : 'Sin fecha registrada'}</div>
+          ${tipo?`<div class="adh2-tipo"><i class="ti ti-tag"></i>${tipo}</div>`:''}
+          ${ctx?`<div class="adh2-ctx">${ctx}</div>`:''}
         </div>
-        <i class="ti ti-chevron-down adh-chevron"></i>
+        <button class="adh2-hist-btn" onclick="openPatientPanel('${safeNombre}')">
+          <i class="ti ti-history"></i><span>${histCount} entrada${histCount!==1?'s':''}</span>
+        </button>
       </div>
-      <div class="adh-body">
-        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);padding-bottom:8px">
-          <i class="ti ti-history" style="font-size:12px;vertical-align:middle"></i>
-          Historial completo — ${cantEntradas} registro${cantEntradas!==1?'s':''}
-        </div>
-        ${histHTML || '<div style="font-size:11px;color:var(--muted)">Sin registros históricos.</div>'}
-      </div>
+      ${accion
+        ?`<div class="adh2-accionable">
+            <div class="adh2-ac-text"><i class="ti ti-arrow-narrow-right" style="color:var(--muted2)"></i><span>${accion}</span></div>
+            <div class="adh2-ac-footer">
+              <span class="ac-resp"><i class="ti ti-user" style="font-size:9px"></i>${resp}</span>
+              ${fechaLim?`<span style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace"><i class="ti ti-clock" style="font-size:10px;vertical-align:middle"></i> ${fechaLim}</span>`:''}
+              <button class="adh2-status-btn${isDone?' done':''}" onclick="toggleAdhStatus(this,'${sk}')">
+                <i class="ti ${isDone?'ti-circle-check':'ti-circle'}"></i>
+                <span>${isDone?'Hecho':'Pendiente'}</span>
+              </button>
+            </div>
+          </div>`
+        :`<div class="adh2-accionable adh2-no-ac"><i class="ti ti-minus"></i>Sin accionable registrado</div>`
+      }
     </div>`;
   }
 
-  function adhBlock(rows, label){
-    // 1. Deduplicar: un objeto por paciente (la entrada más reciente del período)
-    const patientMap = buildPatientMap(rows);
-    const patients = Object.values(patientMap);
+  /* Card compacta (Monitoreo) */
+  function monitCard(row){
+    const nombre=(row['NOMBRE PACIENTE']||row.PACIENTE||'—').trim();
+    const accion=row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
+    const resp=row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'';
+    const histCount=(RAW.adh||[]).filter(r=>(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim()===nombre).length;
+    const safeNombre=nombre.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="adh2-monit-card">
+      <div class="adh2-monit-left">
+        <div class="adh2-monit-av">${initials(nombre)}</div>
+        <div style="min-width:0">
+          <div class="adh2-monit-name" onclick="openPatientPanel('${safeNombre}')">${nombre}</div>
+          ${accion?`<div class="adh2-monit-ac">${accion}${resp?' · '+resp:''}</div>`:''}
+        </div>
+      </div>
+      <span class="badge bx-gr" style="font-size:9px;flex-shrink:0">${histCount} entrada${histCount!==1?'s':''}</span>
+    </div>`;
+  }
 
-    // 2. Ordenar: crítico > moderado > monitoreo, luego por fecha desc
-    const riskPrio = r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('crít')||n.includes('crit')?0:n.includes('moder')||n.includes('bajo')?1:2;};
-    patients.sort((a,b)=>{
-      const rp=riskPrio(a)-riskPrio(b); if(rp!==0) return rp;
+  /* Sección principal de una reunión o resumen */
+  function meetingView(rows, viewKey){
+    const criticos=rows.filter(r=>nivelCfg(r['NIVEL RIESGO']||'').prio===0);
+    const moderados=rows.filter(r=>nivelCfg(r['NIVEL RIESGO']||'').prio===1);
+    const monitoreo=rows.filter(r=>nivelCfg(r['NIVEL RIESGO']||'').prio===2);
+    const total=rows.length;
+    if(!total) return emptyState('Sin pacientes en esta vista.');
+
+    let html=`<div class="metrics">
+      <div class="mc red"><div class="mc-label">Críticos</div><div class="mc-val r">${criticos.length}</div><div class="mc-sub">Acción inmediata</div></div>
+      <div class="mc amber"><div class="mc-label">Moderados</div><div class="mc-val a">${moderados.length}</div><div class="mc-sub">Seguimiento activo</div></div>
+      <div class="mc"><div class="mc-label">Monitoreo</div><div class="mc-val m">${monitoreo.length}</div><div class="mc-sub">Vigilancia</div></div>
+      <div class="mc blue"><div class="mc-label">Total</div><div class="mc-val b">${total}</div><div class="mc-sub">En esta vista</div></div>
+    </div>`;
+
+    if(criticos.length){
+      html+=`<div class="section">
+        <div class="sec-hdr">
+          <i class="ti ti-alert-circle" style="color:var(--red)"></i>
+          <span class="sec-title">Críticos</span>
+          <span class="sec-badge sb-r">${criticos.length}</span>
+        </div>
+        <div class="adh2-grid-full">${criticos.map(r=>patientCard(r)).join('')}</div>
+      </div>`;
+    }
+
+    if(moderados.length){
+      html+=`<div class="section">
+        <div class="sec-hdr">
+          <i class="ti ti-alert-triangle" style="color:var(--amber)"></i>
+          <span class="sec-title">Moderados</span>
+          <span class="sec-badge sb-a">${moderados.length}</span>
+        </div>
+        <div class="adh2-grid-2col">${moderados.map(r=>patientCard(r)).join('')}</div>
+      </div>`;
+    }
+
+    if(monitoreo.length){
+      const mk='monit-'+viewKey;
+      html+=`<div class="section">
+        <div class="sec-hdr adh2-monit-toggle" onclick="toggleMonitoreo('${mk}')">
+          <i class="ti ti-eye" style="color:var(--muted)"></i>
+          <span class="sec-title" style="color:var(--muted2)">Monitoreo</span>
+          <span class="sec-badge sb-gr">${monitoreo.length}</span>
+          <i class="ti ti-chevron-down adh2-chevron-icon" id="${mk}-icon"></i>
+        </div>
+        <div class="adh2-monit-list" id="${mk}" style="display:none">
+          ${monitoreo.map(r=>monitCard(r)).join('')}
+        </div>
+      </div>`;
+    }
+
+    return html;
+  }
+
+  /* Bloque completo para un panel de equipo */
+  function adhBlock(rows, eqKey){
+    const dates=getUniqueDates(rows);
+    if(!rows.length) return emptyState('Sin registros en el período seleccionado.');
+
+    const pillAll=`<button class="adh2-pill adh2-pill-all active" onclick="selectMeeting('${eqKey}','__all__',this)">Todas</button>`;
+    const datePills=dates.map(d=>`<button class="adh2-pill" onclick="selectMeeting('${eqKey}','${d}',this)">${d}</button>`).join('');
+
+    /* Vista "Todas": entrada más reciente por paciente */
+    const latest=buildLatestMap(rows);
+    latest.sort((a,b)=>nivelCfg(a['NIVEL RIESGO']||'').prio-nivelCfg(b['NIVEL RIESGO']||'').prio);
+
+    let views=`<div class="adh2-meeting-view active" id="adh2v-${eqKey}-__all__">
+      ${meetingView(latest, eqKey+'-all')}
+    </div>`;
+
+    dates.forEach(d=>{
+      const mRows=rows.filter(r=>(r['FECHA REUNIÓN']||'').trim()===d);
+      mRows.sort((a,b)=>nivelCfg(a['NIVEL RIESGO']||'').prio-nivelCfg(b['NIVEL RIESGO']||'').prio);
+      const safeD=d.replace(/\//g,'');
+      views+=`<div class="adh2-meeting-view" id="adh2v-${eqKey}-${safeD}">
+        ${meetingView(mRows, eqKey+'-'+safeD)}
+      </div>`;
+    });
+
+    return `<div class="adh2-nav">
+      <div class="adh2-nav-label"><i class="ti ti-calendar-event"></i>Reunión</div>
+      <div class="adh2-pills" id="adh2pills-${eqKey}">${pillAll}${datePills}</div>
+    </div>
+    ${views}`;
+  }
+
+  const eq1=data.filter(r=>(r.EQUIPO||'').includes('1'));
+  const eq2=data.filter(r=>(r.EQUIPO||'').includes('2'));
+  const eq3=data.filter(r=>(r.EQUIPO||'').includes('3'));
+
+  g('adherencia-all').innerHTML=adhBlock(data,'all');
+  g('adherencia-eq1').innerHTML=adhBlock(eq1,'eq1');
+  g('adherencia-eq2').innerHTML=adhBlock(eq2,'eq2');
+  g('adherencia-eq3').innerHTML=adhBlock(eq3,'eq3');
+}
+
+/* ── Seleccionar reunión ── */
+function selectMeeting(eqKey, dateStr, btn){
+  const container=g('adherencia-'+eqKey); if(!container) return;
+  container.querySelectorAll('.adh2-meeting-view').forEach(v=>v.classList.remove('active'));
+  const pills=g('adh2pills-'+eqKey); if(pills) pills.querySelectorAll('.adh2-pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  const safeD=dateStr==='__all__'?'__all__':dateStr.replace(/\//g,'');
+  const target=g('adh2v-'+eqKey+'-'+safeD); if(target) target.classList.add('active');
+}
+
+/* ── Toggle monitoreo ── */
+function toggleMonitoreo(key){
+  const list=g(key); if(!list) return;
+  const icon=g(key+'-icon');
+  const open=list.style.display!=='none';
+  list.style.display=open?'none':'flex';
+  if(icon) icon.classList.toggle('open',!open);
+}
+
+/* ── Toggle estado accionable (sessionStorage) ── */
+function toggleAdhStatus(btn, sk){
+  const isDone=btn.classList.contains('done');
+  const newDone=!isDone;
+  sessionStorage.setItem(sk, newDone?'RESUELTO':'PENDIENTE');
+  btn.classList.toggle('done',newDone);
+  const icon=btn.querySelector('i'), span=btn.querySelector('span');
+  if(icon) icon.className='ti '+(newDone?'ti-circle-check':'ti-circle');
+  if(span) span.textContent=newDone?'Hecho':'Pendiente';
+}
+
+/* ── Panel lateral de historial ── */
+function openPatientPanel(nombre){
+  const history=(RAW.adh||[])
+    .filter(r=>(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim()===nombre)
+    .sort((a,b)=>{
       const da=parseDate(a['FECHA REUNIÓN']||''),db=parseDate(b['FECHA REUNIÓN']||'');
       if(!da&&!db) return 0; if(!da) return 1; if(!db) return -1; return db-da;
     });
 
-    const criticos  = patients.filter(r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('crít')||n.includes('crit');}).length;
-    const moderados = patients.filter(r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('moder')||n.includes('bajo');}).length;
-    const monit     = Math.max(patients.length-criticos-moderados, 0);
-    const totalEntradas = rows.length; // todas las filas (no deduplicadas)
+  function nc(nivel){ const n=(nivel||'').toLowerCase(); if(n.includes('crít')||n.includes('crit')) return {bx:'bx-r',label:'Crítico'}; if(n.includes('moder')||n.includes('bajo')) return {bx:'bx-a',label:'Moderado'}; return {bx:'bx-gr',label:'Monitoreo'}; }
 
-    return `<div class="metrics">
-      <div class="mc red"><div class="mc-label">Críticos</div><div class="mc-val r">${criticos}</div><div class="mc-sub">Acción inmediata</div></div>
-      <div class="mc amber"><div class="mc-label">Moderados</div><div class="mc-val a">${moderados}</div><div class="mc-sub">Seguimiento activo</div></div>
-      <div class="mc"><div class="mc-label">Monitoreo</div><div class="mc-val m">${monit}</div><div class="mc-sub">Vigilancia</div></div>
-      <div class="mc blue"><div class="mc-label">Pacientes únicos</div><div class="mc-val b">${patients.length}</div><div class="mc-sub">${label} · ${totalEntradas} registros</div></div>
-    </div>
-    <div class="section">
-      <div class="sec-hdr">
-        <i class="ti ti-alert-triangle" style="color:var(--amber)"></i>
-        <span class="sec-title">Historial por paciente</span>
-        <span class="sec-badge sb-a">${patients.length} pacientes</span>
-        <span class="sec-badge sb-gr" style="margin-left:6px">${totalEntradas} registros totales</span>
+  const bodyHTML=history.length ? history.map((row,i)=>{
+    const fecha=row['FECHA REUNIÓN']||'';
+    const semana=row['SEMANA ISO']||'';
+    const nivel=row['NIVEL RIESGO']||row.NIVEL||'';
+    const tipo=row['TIPO PROBLEMA']||'';
+    const ctx=row['CONTEXTO / SITUACIÓN']||row['CONTEXTO/SITUACIÓN']||row.CONTEXTO||'';
+    const accion=row['ACCIONABLE PRINCIPAL']||row.ACCIONABLE||'';
+    const resp=row['RESPONSABLE ACCIONABLE']||row.RESPONSABLE||'—';
+    const estado=row['ESTADO ACCIONABLE']||row['ESTADO']||'PENDIENTE';
+    const fechaLim=row['FECHA LÍMITE']||row.FECHA||'';
+    const {bx,label}=nc(nivel);
+    const isLatest=i===0;
+    const estadoBx=estado.toUpperCase().includes('RESUELTO')?'bx-g':estado.toUpperCase().includes('PROCESO')?'bx-a':'bx-gr';
+    return `<div class="ph-entry${isLatest?' latest':''}">
+      <div class="ph-entry-meta">
+        <span class="ph-entry-date"><i class="ti ti-calendar" style="font-size:11px"></i>${fecha||'Sin fecha'}${semana?' · Sem '+semana:''}</span>
+        <span class="badge ${bx}" style="font-size:9px">${label}</span>
+        ${isLatest?'<span class="badge bx-b" style="font-size:9px">Última</span>':''}
       </div>
-      <div class="adh-list">${patients.length
-        ? patients.map((r,i)=>{
-            const nombre=(r['NOMBRE PACIENTE']||r.PACIENTE||'').trim();
-            return adhCard(r, getPatientHistory(nombre), 'adh-'+label.replace(/\s/g,'')+'-'+i);
-          }).join('')
-        : emptyState('Sin pacientes en el período seleccionado.')
-      }</div>
+      ${tipo?`<div style="font-size:11px;color:var(--muted2);margin-bottom:5px"><strong style="color:var(--text);font-weight:500">Problema:</strong> ${tipo}</div>`:''}
+      ${ctx?`<div class="ph-ctx">${ctx}</div>`:''}
+      ${accion?`<div class="ph-ac">
+        <div class="ph-ac-text">→ ${accion}</div>
+        <div class="ph-ac-footer">
+          <span class="ac-resp"><i class="ti ti-user" style="font-size:9px"></i>${resp}</span>
+          <span class="badge ${estadoBx}" style="font-size:9px">${estado}</span>
+          ${fechaLim?`<span style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">Límite: ${fechaLim}</span>`:''}
+        </div>
+      </div>`:`<div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:4px">Sin accionable registrado</div>`}
     </div>`;
-  }
+  }).join('') : `<div style="color:var(--muted);font-size:12px;text-align:center;padding:24px 0">Sin historial disponible.</div>`;
 
-  const eq1 = data.filter(r=>(r.EQUIPO||'').includes('1'));
-  const eq2 = data.filter(r=>(r.EQUIPO||'').includes('2'));
-  const eq3 = data.filter(r=>(r.EQUIPO||'').includes('3'));
+  g('phName').textContent=nombre;
+  g('phSubtitle').textContent=history.length+' registro'+(history.length!==1?'s':'')+' · historial completo';
+  g('phBody').innerHTML=bodyHTML;
+  g('phOverlay').classList.add('open');
+  g('phPanel').classList.add('open');
+  document.body.style.overflow='hidden';
+}
 
-  g('adherencia-all').innerHTML = adhBlock(data, 'Todos los equipos');
-  g('adherencia-eq1').innerHTML = adhBlock(eq1, 'Equipo 1');
-  g('adherencia-eq2').innerHTML = adhBlock(eq2, 'Equipo 2');
-  g('adherencia-eq3').innerHTML = adhBlock(eq3, 'Equipo 3');
-
-  // Auto-expandir críticos
-  const allPatients = Object.values(buildPatientMap(data));
-  allPatients.sort((a,b)=>{const rp=((r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('crít')||n.includes('crit')?0:n.includes('moder')||n.includes('bajo')?1:2;})(a))-((r=>{const n=(r['NIVEL RIESGO']||'').toLowerCase();return n.includes('crít')||n.includes('crit')?0:n.includes('moder')||n.includes('bajo')?1:2;})(b));return rp;});
-  allPatients.forEach((r,i)=>{
-    if((r['NIVEL RIESGO']||'').toLowerCase().includes('crít')||(r['NIVEL RIESGO']||'').toLowerCase().includes('crit')){
-      const el = document.getElementById('adh-Todoslosequipos-'+i);
-      if(el) el.classList.add('open');
-    }
-  });
+function closePatientPanel(){
+  g('phOverlay').classList.remove('open');
+  g('phPanel').classList.remove('open');
+  document.body.style.overflow='';
 }
 
 /* ═══════════════════════════════════════
@@ -1548,11 +1739,6 @@ function showEq(section, eq, btn){
   document.querySelectorAll('#page-'+section+' .eq-tab').forEach(t=>t.classList.remove('active'));
   g(section+'-'+eq).classList.add('active');
   btn.classList.add('active');
-  // Si es el panel de adherencia, re-aplicar la búsqueda activa al nuevo panel
-  if(section === 'adherencia'){
-    const input = g('adhSearchInput');
-    if(input) searchAdherencia(input.value);
-  }
 }
 
 /* ═══════════════════════════════════════
@@ -1602,72 +1788,6 @@ async function loadAll(){
   setLoading(false);
 }
 
-/* ═══════════════════════════════════════
-   BUSCADOR ADHERENCIA
-   ═══════════════════════════════════════ */
-function searchAdherencia(query){
-  const q = (query||'').trim().toLowerCase();
-  const clearBtn = g('adhSearchClear');
-  const resultsEl = g('adhSearchResults');
-
-  // Mostrar/ocultar botón limpiar
-  clearBtn.style.display = q ? 'block' : 'none';
-
-  // Buscar en el panel activo actualmente
-  const activePanel = document.querySelector('#page-adherencia .eq-content.active');
-  if(!activePanel){ resultsEl.textContent = ''; return; }
-
-  const cards = activePanel.querySelectorAll('.adh-card');
-  let visible = 0;
-  let total = 0;
-
-  cards.forEach(card => {
-    const nameEl = card.querySelector('.adh-name');
-    const name = nameEl ? nameEl.textContent.toLowerCase() : '';
-    const match = !q || name.includes(q);
-    card.classList.toggle('adh-hidden', !match);
-    if(match){
-      visible++;
-      // Auto-expandir si hay búsqueda activa y solo un resultado
-    }
-    total++;
-  });
-
-  // Mostrar/ocultar mensaje "sin resultados"
-  let noResults = activePanel.querySelector('.adh-no-results');
-  if(!noResults){
-    noResults = document.createElement('div');
-    noResults.className = 'adh-no-results';
-    noResults.innerHTML = '<i class="ti ti-user-search"></i>Sin pacientes que coincidan con "<span class="adh-no-results-q"></span>"';
-    activePanel.appendChild(noResults);
-  }
-  const qSpan = noResults.querySelector('.adh-no-results-q');
-  if(qSpan) qSpan.textContent = query;
-  noResults.style.display = (q && visible === 0) ? 'block' : 'none';
-
-  // Auto-expandir si hay exactamente un resultado
-  if(q && visible === 1){
-    cards.forEach(card => {
-      if(!card.classList.contains('adh-hidden')) card.classList.add('open');
-    });
-  }
-
-  // Contador de resultados
-  if(q){
-    resultsEl.textContent = visible === total
-      ? `${total} pacientes`
-      : `${visible} de ${total} pacientes`;
-  } else {
-    resultsEl.textContent = total ? `${total} pacientes` : '';
-  }
-}
-
-function clearAdhSearch(){
-  const input = g('adhSearchInput');
-  input.value = '';
-  input.focus();
-  searchAdherencia('');
-}
 
 /* ═══════════════════════════════════════
    INIT
