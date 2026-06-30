@@ -684,15 +684,24 @@ function toArgDate(isoStr){
 }
 
 const CALENDLY_PROXY_URL = 'https://script.google.com/macros/s/AKfycbxJa4KcHaEDdGl0WVpNGxmWQc08IRsuBoZMmlgT_hoiI1CwI1SyEVjuiYKlxhqvd6P4pg/exec';
+const CALENDLY_PROXY_URL_EQ3 = 'https://script.google.com/macros/s/AKfycbzOlcWmC-kMs-XTlYBZVyVFdj9q1VIORA1V6rZUEjRTrFolf20y00PmeA3NxoD9YKL9vg/exec';
+
+async function loadCalendlyProxy(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('Proxy HTTP '+r.status);
+  const data = await r.json();
+  if(!data.ok) throw new Error(data.error||'Proxy error');
+  return (data.rows||[]).map(row=>({...row, _calendly:true}));
+}
 
 async function loadCalendlyData(){
   try{
-    const r = await fetch(CALENDLY_PROXY_URL);
-    if(!r.ok) throw new Error('Proxy HTTP '+r.status);
-    const data = await r.json();
-    if(!data.ok) throw new Error(data.error||'Proxy error');
-    const rows = (data.rows||[]).map(row=>({...row, _calendly:true}));
-    CALENDLY_STATUS = 'ok';
+    const [eq2, eq3] = await Promise.all([
+      loadCalendlyProxy(CALENDLY_PROXY_URL).catch(e=>{ console.warn('Calendly EQ2 error:', e.message); return []; }),
+      loadCalendlyProxy(CALENDLY_PROXY_URL_EQ3).catch(e=>{ console.warn('Calendly EQ3 error:', e.message); return []; }),
+    ]);
+    const rows = [...eq2, ...eq3];
+    CALENDLY_STATUS = rows.length ? 'ok' : 'error';
     return rows.length ? rows : null;
   }catch(e){
     console.warn('Calendly proxy error:', e.message);
@@ -1880,10 +1889,10 @@ async function loadAll(){
   // Almacenar datos globales
   RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.adh = dAdh;
 
-  // Disponibilidad: Calendly (EQ2 en tiempo real) + Sheets (EQ1 y EQ3)
+  // Disponibilidad: Calendly (EQ2 y EQ3 en tiempo real) + Sheets (resto)
   if(dCalendly && dCalendly.length){
-    const sheetsNonEq2 = dDisp.filter(r=>!(r.EQUIPO||'').includes('2'));
-    RAW.disp = [...sheetsNonEq2, ...dCalendly];
+    const sheetsNonCalendly = dDisp.filter(r=>!(r.EQUIPO||'').includes('2') && !(r.EQUIPO||'').includes('3'));
+    RAW.disp = [...sheetsNonCalendly, ...dCalendly];
   } else {
     RAW.disp = dDisp;
   }
