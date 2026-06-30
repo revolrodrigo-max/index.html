@@ -758,9 +758,14 @@ function g(id){ return document.getElementById(id); }
 function initials(n){ return (n||'').split(' ').slice(0,2).map(w=>(w||'')[0]||'').join('').toUpperCase()||'?'; }
 function parseDate(str){
   if(!str) return null;
-  const p = str.trim().split('/');
+  const s = str.trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+    const [y,m,d] = s.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+  const p = s.split('/');
   if(p.length===2){
-    // DD/MM sin año → asume año actual
     const y = new Date().getFullYear();
     const d = new Date(y, parseInt(p[1])-1, parseInt(p[0]));
     return isNaN(d.getTime()) ? null : d;
