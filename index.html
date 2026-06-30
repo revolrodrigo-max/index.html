@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -650,12 +650,120 @@ const URLS = {
   disponibilidad: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=578212844&single=true&output=csv',
 };
 
+/* ── Calendly EQ2 ── */
+const CALENDLY_TOKEN = '***CALENDLY_TOKEN_REDACTED***';
+const CALENDLY_ORG_URI = 'https://api.calendly.com/organizations/f7cdf646-2f99-474c-909b-b477936c36ba';
+const CALENDLY_PROS = {
+  'https://api.calendly.com/users/72d3dbf1-ea9a-44b3-bc35-88838f2db017': { nombre: 'Martín Asís (Tino)', rol: 'Coach', equipo: 'Equipo 2' },
+  'https://api.calendly.com/users/a3a01f0f-457c-44fd-b6e2-37361f23ad45': { nombre: 'Majo', rol: 'Nutricionista', equipo: 'Equipo 2' },
+  'https://api.calendly.com/users/c4a624a6-487b-426f-b855-f70d70d6b8c7': { nombre: 'Doc Alí', rol: 'Médico', equipo: 'Equipo 2' },
+  'https://api.calendly.com/users/7abeadfc-6406-4136-be7d-8bb3258b8753': { nombre: 'Luciana Labarthe', rol: 'Profesional', equipo: 'Equipo 2' },
+};
+
 /* ═══════════════════════════════════════
    GLOBAL STATE
    ═══════════════════════════════════════ */
 let RAW = { eq1:[], eq2:[], eq3:[], disp:[], adh:[] };
 let FILTER = { from: null, to: null, mode: 'todo' };
 let CHARTS = {};
+let CALENDLY_STATUS = 'idle'; // 'idle' | 'ok' | 'error'
+
+/* ═══════════════════════════════════════
+   CALENDLY API
+   ═══════════════════════════════════════ */
+async function calendlyFetch(url){
+  const r = await fetch(url, { headers:{ 'Authorization':'Bearer '+CALENDLY_TOKEN } });
+  if(!r.ok) throw new Error('Calendly HTTP '+r.status);
+  return r.json();
+}
+
+function toArgDate(isoStr){
+  // Convierte UTC → Argentina (UTC-3) y devuelve DD/MM/AAAA
+  const d = new Date(new Date(isoStr).getTime() - 3*60*60*1000);
+  return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear();
+}
+
+async function loadCalendlyData(){
+  try{
+    const now = new Date();
+    const day = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1)); mon.setHours(0,0,0,0);
+    const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+    const minISO = mon.toISOString();
+    const maxISO = sun.toISOString();
+
+    // 1. Reuniones agendadas por profesional por día
+    const evData = await calendlyFetch(
+      'https://api.calendly.com/scheduled_events?organization='+encodeURIComponent(CALENDLY_ORG_URI)
+      +'&min_start_time='+minISO+'&max_start_time='+maxISO+'&status=active&count=100'
+    );
+
+    const agMap = {}; // agMap[uri][DD/MM/AAAA] = count
+    (evData.collection||[]).forEach(ev=>{
+      const dateStr = toArgDate(ev.start_time);
+      (ev.event_memberships||[]).forEach(m=>{
+        const uri = m.user;
+        if(!CALENDLY_PROS[uri]) return;
+        if(!agMap[uri]) agMap[uri]={};
+        agMap[uri][dateStr] = (agMap[uri][dateStr]||0)+1;
+      });
+    });
+
+    // 2. Espacios libres por profesional por día (via event_type_available_times)
+    const libMap = {}; // libMap[uri][DD/MM/AAAA] = count | null si falla
+    await Promise.all(Object.keys(CALENDLY_PROS).map(async uri=>{
+      try{
+        const etData = await calendlyFetch(
+          'https://api.calendly.com/event_types?user='+encodeURIComponent(uri)+'&active=true&count=10'
+        );
+        const ets = etData.collection||[];
+        if(!ets.length){ libMap[uri]=null; return; }
+        // Usa el primer event type activo como tipo principal de sesión
+        const avData = await calendlyFetch(
+          'https://api.calendly.com/event_type_available_times?event_type='+encodeURIComponent(ets[0].uri)
+          +'&start_time='+minISO+'&end_time='+maxISO
+        );
+        libMap[uri]={};
+        (avData.collection||[]).forEach(sl=>{
+          const d = toArgDate(sl.start_time);
+          libMap[uri][d] = (libMap[uri][d]||0)+1;
+        });
+      }catch(e){ libMap[uri]=null; }
+    }));
+
+    // 3. Construir filas en formato "nuevo" (una por profesional por día)
+    const allDates = new Set();
+    Object.values(agMap).forEach(dm=>Object.keys(dm).forEach(d=>allDates.add(d)));
+    Object.values(libMap).forEach(dm=>{ if(dm) Object.keys(dm).forEach(d=>allDates.add(d)); });
+
+    const rows = [];
+    Object.entries(CALENDLY_PROS).forEach(([uri,prof])=>{
+      allDates.forEach(dateStr=>{
+        const ag = (agMap[uri]&&agMap[uri][dateStr])||0;
+        const lib = libMap[uri] ? ((libMap[uri][dateStr])||0) : null;
+        const cap = lib!==null ? ag+lib : ag;
+        if(ag===0 && (lib===null||lib===0)) return; // omitir días vacíos
+        rows.push({
+          PROFESIONAL: prof.nombre,
+          ROL: prof.rol,
+          EQUIPO: prof.equipo,
+          FECHA: dateStr,
+          AGENDADAS: String(ag),
+          LIBRES: lib!==null ? String(lib) : '',
+          'CAP. MÁX': cap ? String(cap) : '',
+          _calendly: true
+        });
+      });
+    });
+
+    CALENDLY_STATUS = 'ok';
+    return rows.length ? rows : null;
+  }catch(e){
+    console.warn('Calendly error:', e.message);
+    CALENDLY_STATUS = 'error';
+    return null;
+  }
+}
 
 /* ═══════════════════════════════════════
    CSV PARSER
@@ -1148,7 +1256,8 @@ function renderDisp(data){
   const profMap = {};
   data.forEach(r=>{
     const nombre=(r.PROFESIONAL||'').trim(); if(!nombre) return;
-    if(!profMap[nombre]) profMap[nombre]={nombre, rol:r.ROL||'', equipo:r.EQUIPO||'', rows:[]};
+    if(!profMap[nombre]) profMap[nombre]={nombre, rol:r.ROL||'', equipo:r.EQUIPO||'', rows:[], isCalendly:false};
+    if(r._calendly) profMap[nombre].isCalendly = true;
     profMap[nombre].rows.push(r);
   });
 
@@ -1208,10 +1317,13 @@ function renderDisp(data){
       ? `<div class="disp-alert-banner"><i class="ti ti-alert-triangle"></i> Solo ${totalLib} slot${totalLib!==1?'s':''} libre${totalLib!==1?'s':''} esta semana</div>`
       : '';
 
+    const liveTag = prof.isCalendly
+      ? `<span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--green);background:var(--gbg);border:1px solid var(--gborder);border-radius:20px;padding:1px 7px;display:inline-flex;align-items:center;gap:3px;margin-top:2px"><i class="ti ti-wifi" style="font-size:10px"></i>Live</span>`
+      : '';
     return `<div class="${cardClass}">
       <div class="prof-top">
         <div class="av ${av}">${initials(prof.nombre)}</div>
-        <div style="flex:1"><div class="prof-name">${prof.nombre}</div><div class="prof-role">${prof.rol}</div></div>
+        <div style="flex:1"><div class="prof-name">${prof.nombre}</div><div class="prof-role">${prof.rol}</div>${liveTag}</div>
         <span class="badge ${bx}">${bl}</span>
       </div>
       ${alertBanner}
@@ -1815,16 +1927,25 @@ async function loadAll(){
   setStatus('idle','Cargando...');
   let errores = 0;
 
-  const [dEq1, dEq2, dEq3, dDisp, dAdh] = await Promise.all([
+  const [dEq1, dEq2, dEq3, dDisp, dAdh, dCalendly] = await Promise.all([
     fetchSheet(URLS.eq1, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.eq2, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.eq3, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.disponibilidad, 'PROFESIONAL', 'PROFESIONAL'),
     fetchSheet(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
+    loadCalendlyData(),
   ]);
 
   // Almacenar datos globales
-  RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.disp = dDisp; RAW.adh = dAdh;
+  RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.adh = dAdh;
+
+  // Disponibilidad: Calendly (EQ2 en tiempo real) + Sheets (EQ1 y EQ3)
+  if(dCalendly && dCalendly.length){
+    const sheetsNonEq2 = dDisp.filter(r=>!(r.EQUIPO||'').includes('2'));
+    RAW.disp = [...sheetsNonEq2, ...dCalendly];
+  } else {
+    RAW.disp = dDisp;
+  }
   // Normalizar columnas (nuevas planillas usan INGRESO/SALIDA/DURACIÓN en lugar de INICIO/FIN/DURACION)
   normalizeEqRows(RAW.eq1); normalizeEqRows(RAW.eq2); normalizeEqRows(RAW.eq3);
   // Calcular FIN = INICIO + DURACION cuando falta
@@ -1865,3 +1986,4 @@ loadAll();
 </script>
 </body>
 </html>
+
