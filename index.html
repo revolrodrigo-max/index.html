@@ -1895,7 +1895,7 @@ async function loadAll(){
 
   try{ renderPrograma(allEq); }catch(e){ console.error('Programa error',e); errores++; }
   try{ renderCierres(allEq); }catch(e){ console.error('Cierres error',e); errores++; }
-  if(dDisp.length){ try{ renderDisp(dDisp); }catch(e){ console.error('Disp error',e); errores++; } }
+  if(RAW.disp.length){ try{ renderDisp(RAW.disp); }catch(e){ console.error('Disp error',e); errores++; } }
   else { ['disponibilidad-all','disponibilidad-eq1','disponibilidad-eq2','disponibilidad-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar DISPONIBILIDAD.'); }); errores++; }
   if(dAdh.length){ try{ renderAdh(dAdh); }catch(e){ console.error('Adh error',e); errores++; } }
   else { ['adherencia-all','adherencia-eq1','adherencia-eq2','adherencia-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar ADHERENCIA.'); }); errores++; }
