@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -650,12 +650,65 @@ const URLS = {
   disponibilidad: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=188144136&single=true&output=csv',
 };
 
+/* ── Calendly EQ2 ── */
+const CALENDLY_TOKEN = '***CALENDLY_TOKEN_REDACTED***';
+const CALENDLY_ORG_URI = 'https://api.calendly.com/organizations/f7cdf646-2f99-474c-909b-b477936c36ba';
+const CALENDLY_PROS = {
+  'https://api.calendly.com/users/72d3dbf1-ea9a-44b3-bc35-88838f2db017': { nombre: 'Martín Asís (Tino)', rol: 'Coach', equipo: 'Equipo 2' },
+  'https://api.calendly.com/users/a3a01f0f-457c-44fd-b6e2-37361f23ad45': { nombre: 'Majo', rol: 'Nutricionista', equipo: 'Equipo 2' },
+  'https://api.calendly.com/users/c4a624a6-487b-426f-b855-f70d70d6b8c7': { nombre: 'Doc Alí', rol: 'Médico', equipo: 'Equipo 2' },
+  'https://api.calendly.com/users/7abeadfc-6406-4136-be7d-8bb3258b8753': { nombre: 'Luciana Labarthe', rol: 'Profesional', equipo: 'Equipo 2' },
+};
+
 /* ═══════════════════════════════════════
    GLOBAL STATE
    ═══════════════════════════════════════ */
 let RAW = { eq1:[], eq2:[], eq3:[], disp:[], adh:[] };
 let FILTER = { from: null, to: null, mode: 'todo' };
 let CHARTS = {};
+let CALENDLY_STATUS = 'idle'; // 'idle' | 'ok' | 'error'
+
+/* ═══════════════════════════════════════
+   CALENDLY API
+   ═══════════════════════════════════════ */
+async function calendlyFetch(url){
+  const r = await fetch(url, { headers:{ 'Authorization':'Bearer '+CALENDLY_TOKEN } });
+  if(!r.ok) throw new Error('Calendly HTTP '+r.status);
+  return r.json();
+}
+
+function toArgDate(isoStr){
+  // Convierte UTC → Argentina (UTC-3) y devuelve DD/MM/AAAA
+  const d = new Date(new Date(isoStr).getTime() - 3*60*60*1000);
+  return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+d.getUTCFullYear();
+}
+
+const CALENDLY_PROXY_URL = 'https://script.google.com/macros/s/AKfycbxJa4KcHaEDdGl0WVpNGxmWQc08IRsuBoZMmlgT_hoiI1CwI1SyEVjuiYKlxhqvd6P4pg/exec';
+const CALENDLY_PROXY_URL_EQ3 = 'https://script.google.com/macros/s/AKfycbzOlcWmC-kMs-XTlYBZVyVFdj9q1VIORA1V6rZUEjRTrFolf20y00PmeA3NxoD9YKL9vg/exec';
+
+async function loadCalendlyProxy(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('Proxy HTTP '+r.status);
+  const data = await r.json();
+  if(!data.ok) throw new Error(data.error||'Proxy error');
+  return (data.rows||[]).map(row=>({...row, _calendly:true}));
+}
+
+async function loadCalendlyData(){
+  try{
+    const [eq2, eq3] = await Promise.all([
+      loadCalendlyProxy(CALENDLY_PROXY_URL).catch(e=>{ console.warn('Calendly EQ2 error:', e.message); return []; }),
+      loadCalendlyProxy(CALENDLY_PROXY_URL_EQ3).catch(e=>{ console.warn('Calendly EQ3 error:', e.message); return []; }),
+    ]);
+    const rows = [...eq2, ...eq3];
+    CALENDLY_STATUS = rows.length ? 'ok' : 'error';
+    return rows.length ? rows : null;
+  }catch(e){
+    console.warn('Calendly proxy error:', e.message);
+    CALENDLY_STATUS = 'error';
+    return null;
+  }
+}
 
 /* ═══════════════════════════════════════
    CSV PARSER
@@ -714,9 +767,14 @@ function g(id){ return document.getElementById(id); }
 function initials(n){ return (n||'').split(' ').slice(0,2).map(w=>(w||'')[0]||'').join('').toUpperCase()||'?'; }
 function parseDate(str){
   if(!str) return null;
-  const p = str.trim().split('/');
+  const s = str.trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+    const [y,m,d] = s.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+  const p = s.split('/');
   if(p.length===2){
-    // DD/MM sin año → asume año actual
     const y = new Date().getFullYear();
     const d = new Date(y, parseInt(p[1])-1, parseInt(p[0]));
     return isNaN(d.getTime()) ? null : d;
@@ -1154,7 +1212,8 @@ function renderDisp(data){
   const profMap = {};
   data.forEach(r=>{
     const nombre=(r.PROFESIONAL||'').trim(); if(!nombre) return;
-    if(!profMap[nombre]) profMap[nombre]={nombre, rol:r.ROL||'', equipo:r.EQUIPO||'', rows:[]};
+    if(!profMap[nombre]) profMap[nombre]={nombre, rol:r.ROL||'', equipo:r.EQUIPO||'', rows:[], isCalendly:false};
+    if(r._calendly) profMap[nombre].isCalendly = true;
     profMap[nombre].rows.push(r);
   });
 
@@ -1216,10 +1275,13 @@ function renderDisp(data){
       ? `<div class="disp-alert-banner"><i class="ti ti-alert-triangle"></i> Solo ${totalLib} slot${totalLib!==1?'s':''} libre${totalLib!==1?'s':''} en 15 días</div>`
       : '';
 
+    const liveTag = prof.isCalendly
+      ? `<span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--green);background:var(--gbg);border:1px solid var(--gborder);border-radius:20px;padding:1px 7px;display:inline-flex;align-items:center;gap:3px;margin-top:2px"><i class="ti ti-wifi" style="font-size:10px"></i>Live</span>`
+      : '';
     return `<div class="${cardClass}">
       <div class="prof-top">
         <div class="av ${av}">${initials(prof.nombre)}</div>
-        <div style="flex:1"><div class="prof-name">${prof.nombre}</div><div class="prof-role">${prof.rol}</div></div>
+        <div style="flex:1"><div class="prof-name">${prof.nombre}</div><div class="prof-role">${prof.rol}</div>${liveTag}</div>
         <span class="badge ${bx}">${bl}</span>
       </div>
       ${alertBanner}
@@ -1823,16 +1885,25 @@ async function loadAll(){
   setStatus('idle','Cargando...');
   let errores = 0;
 
-  const [dEq1, dEq2, dEq3, dDisp, dAdh] = await Promise.all([
+  const [dEq1, dEq2, dEq3, dDisp, dAdh, dCalendly] = await Promise.all([
     fetchSheet(URLS.eq1, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.eq2, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.eq3, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.disponibilidad, 'PROFESIONAL', 'PROFESIONAL'),
     fetchSheet(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
+    loadCalendlyData(),
   ]);
 
   // Almacenar datos globales
-  RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.disp = dDisp; RAW.adh = dAdh;
+  RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.adh = dAdh;
+
+  // Disponibilidad: Calendly (EQ2 y EQ3 en tiempo real) + Sheets (resto)
+  if(dCalendly && dCalendly.length){
+    const sheetsNonCalendly = dDisp.filter(r=>!(r.EQUIPO||'').includes('2') && !(r.EQUIPO||'').includes('3'));
+    RAW.disp = [...sheetsNonCalendly, ...dCalendly];
+  } else {
+    RAW.disp = dDisp;
+  }
   // Normalizar columnas (nuevas planillas usan INGRESO/SALIDA/DURACIÓN en lugar de INICIO/FIN/DURACION)
   normalizeEqRows(RAW.eq1); normalizeEqRows(RAW.eq2); normalizeEqRows(RAW.eq3);
   // Calcular FIN = INICIO + DURACION cuando falta
@@ -1846,7 +1917,7 @@ async function loadAll(){
 
   try{ renderPrograma(allEq); }catch(e){ console.error('Programa error',e); errores++; }
   try{ renderCierres(allEq); }catch(e){ console.error('Cierres error',e); errores++; }
-  if(dDisp.length){ try{ renderDisp(dDisp); }catch(e){ console.error('Disp error',e); errores++; } }
+  if(RAW.disp.length){ try{ renderDisp(RAW.disp); }catch(e){ console.error('Disp error',e); errores++; } }
   else { ['disponibilidad-all','disponibilidad-eq1','disponibilidad-eq2','disponibilidad-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar DISPONIBILIDAD.'); }); errores++; }
   if(dAdh.length){ try{ renderAdh(dAdh); }catch(e){ console.error('Adh error',e); errores++; } }
   else { ['adherencia-all','adherencia-eq1','adherencia-eq2','adherencia-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar ADHERENCIA.'); }); errores++; }
@@ -1873,3 +1944,4 @@ loadAll();
 </script>
 </body>
 </html>
+
