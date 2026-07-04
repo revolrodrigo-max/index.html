@@ -101,18 +101,18 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 .prof-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
 
-/* ═══ DISPONIBILIDAD SEMANAL ═══ */
-.disp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+/* ═══ DISPONIBILIDAD 15 DÍAS ═══ */
+.disp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:12px}
 .disp-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:14px 15px;transition:border-color .2s,box-shadow .2s}
 .disp-card:hover{border-color:var(--border2);box-shadow:var(--glow)}
-.disp-week{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:10px 0 8px}
-.disp-day{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:8px 4px;text-align:center;transition:border-color .15s}
+.disp-week{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:10px 0 8px}
+.disp-day{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:6px 2px;text-align:center;transition:border-color .15s}
 .disp-day.today{border-color:var(--blue);background:var(--bbg)}
 .disp-day-empty{opacity:.35}
-.disp-day-lbl{font-size:9px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.disp-day-lbl{font-size:8px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.2px;margin-bottom:4px;white-space:nowrap}
 .disp-day.today .disp-day-lbl{color:var(--blue);font-weight:600}
-.disp-day-val{font-size:13px;font-weight:700;font-family:'Syne',sans-serif;line-height:1;margin-bottom:3px}
-.disp-day-sub{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:4px;white-space:nowrap}
+.disp-day-val{font-size:11px;font-weight:700;font-family:'Syne',sans-serif;line-height:1;margin-bottom:3px}
+.disp-day-sub{font-size:8px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:4px;white-space:nowrap}
 .disp-day-bar{height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
 .disp-foot{display:flex;gap:14px;font-size:10px;color:var(--muted2);flex-wrap:wrap;font-family:'DM Mono',monospace;padding-top:8px;border-top:1px solid var(--border)}
 .disp-card.disp-warn{border-color:var(--aborder);box-shadow:0 0 0 1px var(--aborder)}
@@ -647,7 +647,7 @@ const URLS = {
   eq2: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRR7VG5z2ICPJ2Kzi9wZ_SuXQ2ia1AQjSCn_w6oXgT3trrnkTjjXVFQZnbaeRawKa2NwHLaJQhZg0dL/pub?gid=1557785795&single=true&output=csv',
   eq3: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRD6zm1NoNznMatzctdRU1etJ3jfR1FVHmMOW5hHLiSTcCBgRpquE6-jAHUL6gbsBq11kZTlXx_7FjQ/pub?gid=1557785795&single=true&output=csv',
   adherencia: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=770594017&single=true&output=csv',
-  disponibilidad: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=578212844&single=true&output=csv',
+  disponibilidad: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=188144136&single=true&output=csv',
 };
 
 /* ═══════════════════════════════════════
@@ -1139,10 +1139,16 @@ function renderDisp(data){
 
   // ── NUEVO FORMATO: una fila por profesional por día ──
   // Columnas: PROFESIONAL | ROL | EQUIPO | FECHA | AGENDADAS | LIBRES | CAP. MÁX
-  const week = getWeekRange();
   const today = new Date(); today.setHours(0,0,0,0);
   const DAY_LABELS = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
-  const WEEK_DAYS  = [1,2,3,4,5,6]; // Lun → Sáb
+  const RANGE_DAYS = 15; // ventana corrida de 15 días, arranca siempre hoy
+  const dateKey = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const rangeDates = Array.from({length:RANGE_DAYS}, (_,i)=>{
+    const d = new Date(today); d.setDate(today.getDate()+i); return d;
+  });
+  const rangeStart = rangeDates[0];
+  const rangeEnd = new Date(rangeDates[RANGE_DAYS-1]); rangeEnd.setHours(23,59,59,999);
+  const todayKey = dateKey(today);
 
   // Agrupar todas las filas por profesional
   const profMap = {};
@@ -1152,19 +1158,19 @@ function renderDisp(data){
     profMap[nombre].rows.push(r);
   });
 
-  // Calcular resumen semanal de un profesional (memoizado inline)
+  // Calcular resumen de los próximos 15 días de un profesional (memoizado inline)
   function weekData(prof){
     const dayMap={};
     let totalAg=0, totalLib=0, totalCap=0;
     prof.rows.forEach(r=>{
-      const d=parseDate(r.FECHA); if(!d||d<week.start||d>week.end) return;
-      const dow=d.getDay();
+      const d=parseDate(r.FECHA); if(!d||d<rangeStart||d>rangeEnd) return;
+      const key=dateKey(d);
       const ag=parseInt(r.AGENDADAS||0)||0;
       const lib=parseInt(r.LIBRES||0)||0;
       // CAP. MÁX puede no existir → derivar de AGENDADAS + LIBRES
       const cap=parseInt(r['CAP. MÁX']||0)||0 || (ag+lib);
-      if(!dayMap[dow]) dayMap[dow]={ag:0,lib:0,cap:0};
-      dayMap[dow].ag+=ag; dayMap[dow].lib+=lib; dayMap[dow].cap+=cap;
+      if(!dayMap[key]) dayMap[key]={ag:0,lib:0,cap:0};
+      dayMap[key].ag+=ag; dayMap[key].lib+=lib; dayMap[key].cap+=cap;
       totalAg+=ag; totalLib+=lib; totalCap+=cap;
     });
     const pct=totalCap>0?Math.round(totalAg/totalCap*100):0;
@@ -1177,13 +1183,15 @@ function renderDisp(data){
     const bx=pct>=90?'bx-r':pct>=65?'bx-a':'bx-g';
     const bl=pct>=99?'Saturado':pct>=90?'Alta carga':pct>=65?'Media':pct>=20?'Disponible':'Muy libre';
 
-    const cells=WEEK_DAYS.map(dow=>{
-      const day=dayMap[dow];
-      const isTodayCol=(today.getDay()===dow && today>=week.start && today<=week.end);
+    const cells=rangeDates.map(d=>{
+      const key=dateKey(d);
+      const day=dayMap[key];
+      const isTodayCol=(key===todayKey);
       const baseClass='disp-day'+(isTodayCol?' today':'')+(day?'':' disp-day-empty');
+      const lbl=`${DAY_LABELS[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}`;
 
       if(!day) return `<div class="${baseClass}">
-        <div class="disp-day-lbl">${DAY_LABELS[dow]}</div>
+        <div class="disp-day-lbl">${lbl}</div>
         <div class="disp-day-val" style="color:var(--muted)">—</div>
       </div>`;
 
@@ -1191,21 +1199,21 @@ function renderDisp(data){
       const bc=pctD>=90?'bar-danger':pctD>=65?'bar-warn':'bar-ok';
       const vc=pctD>=90?'var(--red)':pctD>=65?'var(--amber)':'var(--green)';
       return `<div class="${baseClass}">
-        <div class="disp-day-lbl">${DAY_LABELS[dow]}</div>
+        <div class="disp-day-lbl">${lbl}</div>
         <div class="disp-day-val" style="color:${vc}">${day.ag}/${day.cap}</div>
-        <div class="disp-day-sub">${day.lib} libre${day.lib!==1?'s':''}</div>
+        <div class="disp-day-sub">${day.lib} lib.</div>
         <div class="disp-day-bar"><div class="bar-fill ${bc}" style="width:${Math.min(pctD,100)}%"></div></div>
       </div>`;
     }).join('');
 
-    // Alerta de baja disponibilidad semanal
+    // Alerta de baja disponibilidad en los próximos 15 días
     const isCrit = totalLib === 0;
     const isWarn = !isCrit && totalLib <= 3;
     const cardClass = isCrit ? 'disp-card disp-crit' : isWarn ? 'disp-card disp-warn' : 'disp-card';
     const alertBanner = isCrit
-      ? `<div class="disp-alert-banner crit"><i class="ti ti-alert-circle"></i> Sin disponibilidad esta semana</div>`
+      ? `<div class="disp-alert-banner crit"><i class="ti ti-alert-circle"></i> Sin disponibilidad en los próximos 15 días</div>`
       : isWarn
-      ? `<div class="disp-alert-banner"><i class="ti ti-alert-triangle"></i> Solo ${totalLib} slot${totalLib!==1?'s':''} libre${totalLib!==1?'s':''} esta semana</div>`
+      ? `<div class="disp-alert-banner"><i class="ti ti-alert-triangle"></i> Solo ${totalLib} slot${totalLib!==1?'s':''} libre${totalLib!==1?'s':''} en 15 días</div>`
       : '';
 
     return `<div class="${cardClass}">
@@ -1217,7 +1225,7 @@ function renderDisp(data){
       ${alertBanner}
       <div class="disp-week">${cells}</div>
       <div class="disp-foot">
-        <span><i class="ti ti-calendar-check" style="font-size:11px;vertical-align:middle"></i> ${totalAg} agend. semana</span>
+        <span><i class="ti ti-calendar-check" style="font-size:11px;vertical-align:middle"></i> ${totalAg} agend. 15 días</span>
         <span style="color:${isCrit?'var(--red)':isWarn?'var(--amber)':'var(--green)'}"><i class="ti ti-circle-plus" style="font-size:11px;vertical-align:middle"></i> ${totalLib} libres</span>
         ${totalCap>0?`<span style="color:var(--muted)">Cap. ${totalCap} · ${pct}% ocupación</span>`:''}
       </div>
@@ -1230,8 +1238,8 @@ function renderDisp(data){
     profs.forEach(p=>{const w=weekData(p);totLib+=w.totalLib;totAg+=w.totalAg;if(w.pct>=99)sat++;if(w.totalLib<=3)alertas++;});
     const promPct=profs.length?Math.round(profs.reduce((s,p)=>s+weekData(p).pct,0)/profs.length):0;
     return `<div class="metrics">
-      <div class="mc blue"><div class="mc-label">Slots libres semana</div><div class="mc-val b">${totLib}</div><div class="mc-sub">${label}</div></div>
-      <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g">${totAg}</div><div class="mc-sub">Semana actual</div></div>
+      <div class="mc blue"><div class="mc-label">Slots libres (15 días)</div><div class="mc-val b">${totLib}</div><div class="mc-sub">${label}</div></div>
+      <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g">${totAg}</div><div class="mc-sub">Próximos 15 días</div></div>
       ${alertas>0?`<div class="mc amber"><div class="mc-label">⚠ Baja disponibilidad</div><div class="mc-val a">${alertas}</div><div class="mc-sub">≤ 3 slots libres</div></div>`:''}
       <div class="mc red"><div class="mc-label">Saturados</div><div class="mc-val r">${sat}</div><div class="mc-sub">Sin disponibilidad</div></div>
       <div class="mc amber"><div class="mc-label">Ocup. promedio</div><div class="mc-val a">${promPct}%</div><div class="mc-sub">Todos los días</div></div>
@@ -1239,10 +1247,10 @@ function renderDisp(data){
     <div class="section">
       <div class="sec-hdr">
         <i class="ti ti-calendar-week" style="color:var(--blue)"></i>
-        <span class="sec-title">Disponibilidad semanal</span>
+        <span class="sec-title">Disponibilidad próximos 15 días</span>
         <span class="sec-badge sb-b">${profs.length} profesionales</span>
       </div>
-      <div class="disp-grid">${profs.length?profs.map(profCard).join(''):emptyState('Sin datos de disponibilidad para esta semana.')}</div>
+      <div class="disp-grid">${profs.length?profs.map(profCard).join(''):emptyState('Sin datos de disponibilidad para los próximos 15 días.')}</div>
     </div>`;
   }
 
