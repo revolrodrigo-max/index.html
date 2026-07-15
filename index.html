@@ -343,6 +343,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
       <button class="main-tab" onclick="showMain('cierres',this)">Cierres</button>
       <button class="main-tab" onclick="showMain('disponibilidad',this)">Disponibilidad</button>
       <button class="main-tab" onclick="showMain('adherencia',this)">Adherencia</button>
+      <button class="main-tab" onclick="showMain('pausas',this)">Pausas</button>
       <button class="main-tab" onclick="showMain('historico',this)">Histórico</button>
       <button class="main-tab" onclick="showMain('docs',this)">Docs</button>
     </div>
@@ -423,6 +424,30 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
   <div id="adherencia-eq1" class="eq-content"></div>
   <div id="adherencia-eq2" class="eq-content"></div>
   <div id="adherencia-eq3" class="eq-content"></div>
+</div>
+
+<!-- ══ PAUSAS ══ -->
+<div id="page-pausas" class="page">
+  <div id="pausas-metricas"></div>
+  <div class="chart-grid">
+    <div class="chart-box">
+      <div class="chart-box-title"><i class="ti ti-chart-bar" style="color:var(--amber)"></i> Pausas por motivo</div>
+      <div class="chart-wrap"><canvas id="chartPausasMotivo"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-title"><i class="ti ti-users" style="color:var(--blue)"></i> Pausas por equipo</div>
+      <div class="chart-wrap"><canvas id="chartPausasEquipo"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-title"><i class="ti ti-chart-line" style="color:var(--purple)"></i> Pausas nuevas por mes</div>
+      <div class="chart-wrap"><canvas id="chartPausasMes"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-title"><i class="ti ti-clock" style="color:var(--orange)"></i> Antigüedad de la pausa</div>
+      <div class="chart-wrap"><canvas id="chartPausasAntig"></canvas></div>
+    </div>
+  </div>
+  <div id="pausas-detalle"></div>
 </div>
 
 <!-- ══ PATIENT HISTORY PANEL ══ -->
@@ -538,6 +563,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">ADHERENCIA</td><td class="doc-desc">Seguimiento de riesgo, accionables y reuniones</td><td><span class="doc-tag bx-a">Semanal</span></td></tr>
         <tr><td class="doc-col">DISPONIBILIDAD</td><td class="doc-desc">Agenda profesionales — slots, ocupación</td><td><span class="doc-tag bx-b">Periódica</span></td></tr>
         <tr><td class="doc-col">PROFESIONALES</td><td class="doc-desc">Master de profesionales — rol, equipo, contacto</td><td><span class="doc-tag bx-gr">Referencia</span></td></tr>
+        <tr><td class="doc-col">REGISTRO DE PAUSAS</td><td class="doc-desc">Planilla "Registro de pausa alumnos" (documento aparte) — alumno, fecha de inicio, motivo, retorno estimado/real, equipo. Alimenta la pestaña Pausas</td><td><span class="doc-tag bx-a">Al ocurrir</span></td></tr>
       </table>
     </div>
 
@@ -648,12 +674,14 @@ const URLS = {
   eq3: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRD6zm1NoNznMatzctdRU1etJ3jfR1FVHmMOW5hHLiSTcCBgRpquE6-jAHUL6gbsBq11kZTlXx_7FjQ/pub?gid=1557785795&single=true&output=csv',
   adherencia: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=770594017&single=true&output=csv',
   disponibilidad: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT2O5nKEHPlQThz-95nZJ_XClZR--s5LwBKdY5o3rSw84XjboXob2QrJj2yJKlx9UMoaUKmDqEtAsaj/pub?gid=188144136&single=true&output=csv',
+  // Registro de pausas de alumnos (planilla "Registro de pausa alumnos")
+  pausas: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vToX6_paNAZxhwgmdHB_f3hKM3sK5RKcimFt9B_rafTIJ91l58PByAOsjqyjKDMNJK899BydBXgltsJ/pub?output=csv',
 };
 
 /* ═══════════════════════════════════════
    GLOBAL STATE
    ═══════════════════════════════════════ */
-let RAW = { eq1:[], eq2:[], eq3:[], disp:[], adh:[] };
+let RAW = { eq1:[], eq2:[], eq3:[], disp:[], adh:[], pausas:[] };
 let FILTER = { from: null, to: null, mode: 'todo' };
 let CHARTS = {};
 let CALENDLY_STATUS = 'idle'; // 'idle' | 'ok' | 'error'
@@ -947,6 +975,7 @@ function rerender(){
   try{ renderCierres(allEq); }catch(e){ console.error(e); }
   if(RAW.disp.length) try{ renderDisp(RAW.disp); }catch(e){ console.error(e); }
   if(RAW.adh.length) try{ renderAdh(filterRows(RAW.adh, 'FECHA REUNIÓN')); }catch(e){ console.error(e); }
+  if(RAW.pausas.length) try{ renderPausas(RAW.pausas); }catch(e){ console.error(e); }
   try{ renderHistorico(); }catch(e){ console.error(e); }
 }
 
@@ -1856,6 +1885,150 @@ function showEq(section, eq, btn){
 }
 
 /* ═══════════════════════════════════════
+   PAUSAS — Registro de pausa alumnos
+   La planilla tiene título en fila 1, encabezados en fila 2 y la
+   columna de equipo SIN encabezado (índice 5), por eso se parsea
+   por índice de columna y no por nombre.
+   ═══════════════════════════════════════ */
+function normalizeEquipoPausa(s){
+  const m = (s||'').match(/(\d)/);
+  return m ? 'Equipo '+m[1] : 'Sin equipo';
+}
+function motivoCategoria(m){
+  const s = (m||'').toLowerCase();
+  if(s.includes('sin respuesta')) return 'Sin respuesta';
+  if(s.includes('méd')||s.includes('medic')) return 'Asunto médico';
+  if(s.includes('vacacion')) return 'Vacaciones';
+  if(s.includes('trabajo')||s.includes('laboral')||s.includes('mudanza')) return 'Laboral / trabajo';
+  if(s.includes('no conforme')) return 'No conforme';
+  if(s.includes('personal')) return 'Asuntos personales';
+  return 'Otro';
+}
+function parsePausas(txt){
+  const lines = csvLines(txt);
+  const hIdx = lines.findIndex(l=>l.toUpperCase().includes('NOMBRE DEL ALUMNO'));
+  if(hIdx < 0) return [];
+  const rows = [];
+  for(let i = hIdx+1; i < lines.length; i++){
+    const v = splitCSV(lines[i]).map(c=>c.trim());
+    if(!v[0]) continue;
+    rows.push({
+      NOMBRE: v[0], INICIO: v[1]||'', MOTIVO: v[2]||'', RET_EST: v[3]||'',
+      ESTADO: v[4]||'', EQUIPO: normalizeEquipoPausa(v[5]||''),
+      RET_REAL: v[6]||'', NOTAS: v[7]||'', CATEGORIA: motivoCategoria(v[2]||'')
+    });
+  }
+  return rows;
+}
+async function fetchPausas(){
+  try{
+    const r = await fetch(URLS.pausas+'&cachebust='+Date.now());
+    if(!r.ok) return [];
+    return parsePausas(await r.text());
+  }catch(e){ return []; }
+}
+function diasEnPausa(r){
+  const d = parseDate(r.INICIO);
+  if(!d) return null;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  return Math.max(0, Math.round((hoy-d)/86400000));
+}
+function renderPausas(rows){
+  const cont = g('pausas-metricas'), det = g('pausas-detalle');
+  if(!rows.length){
+    cont.innerHTML = emptyState('No se pudo cargar el REGISTRO DE PAUSAS.');
+    det.innerHTML = '';
+    return;
+  }
+  const activas = rows.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUS') && !r.RET_REAL);
+  const reactivadas = rows.filter(r=>r.RET_REAL || !(r.ESTADO||'').toUpperCase().includes('PAUS'));
+  const totalPad = RAW.eq1.length + RAW.eq2.length + RAW.eq3.length;
+  const pctPad = totalPad ? Math.round(activas.length/totalPad*100) : null;
+  const sinResp = activas.filter(r=>r.CATEGORIA==='Sin respuesta');
+  const pctSinResp = activas.length ? Math.round(sinResp.length/activas.length*100) : 0;
+  const nuevasMes = rows.filter(r=>inRange(r.INICIO, getMonthRange()));
+  const conDias = activas.map(diasEnPausa).filter(d=>d!==null);
+  const promDias = conDias.length ? Math.round(conDias.reduce((a,b)=>a+b,0)/conDias.length) : 0;
+
+  cont.innerHTML = `<div class="metrics">
+    <div class="mc amber"><div class="mc-label">En pausa</div><div class="mc-val a">${activas.length}</div><div class="mc-sub">Pausas activas</div></div>
+    <div class="mc blue"><div class="mc-label">% del padrón</div><div class="mc-val b">${pctPad===null?'—':pctPad+'%'}</div><div class="mc-sub">${totalPad ? activas.length+' de '+totalPad+' pacientes' : 'Padrón sin cargar'}</div></div>
+    <div class="mc red"><div class="mc-label">Sin respuesta</div><div class="mc-val r">${sinResp.length}</div><div class="mc-sub">${pctSinResp}% de las pausas</div></div>
+    <div class="mc purple"><div class="mc-label">Días prom. en pausa</div><div class="mc-val p">${promDias}</div><div class="mc-sub">Pausas activas</div></div>
+    <div class="mc orange"><div class="mc-label">Nuevas este mes</div><div class="mc-val o">${nuevasMes.length}</div><div class="mc-sub">Mes actual</div></div>
+    <div class="mc green"><div class="mc-label">Reactivados</div><div class="mc-val g">${reactivadas.length}</div><div class="mc-sub">Con retorno registrado</div></div>
+  </div>`;
+
+  // ── Distribución por motivo (con %) ──
+  const catCount = {};
+  activas.forEach(r=>{ catCount[r.CATEGORIA] = (catCount[r.CATEGORIA]||0)+1; });
+  const cats = Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
+  let html = `<div class="section"><div class="sec-hdr"><i class="ti ti-chart-bar" style="color:var(--amber)"></i><span class="sec-title">Distribución por motivo</span><span class="sec-badge sb-a">${activas.length} pausas activas</span></div>
+    <div class="ct-table"><table class="doc-table">
+      <tr><th>Motivo</th><th>Casos</th><th>% de las pausas</th><th>% del padrón</th></tr>
+      ${cats.map(([c,n])=>`<tr><td>${c}</td><td>${n}</td><td>${Math.round(n/activas.length*100)}%</td><td>${totalPad ? Math.round(n/totalPad*100)+'%' : '—'}</td></tr>`).join('')}
+    </table></div></div>`;
+
+  // ── Registro completo, ordenado por días en pausa ──
+  const sorted = [...activas].sort((a,b)=>(diasEnPausa(b)||0)-(diasEnPausa(a)||0));
+  html += `<div class="section"><div class="sec-hdr"><i class="ti ti-player-pause" style="color:var(--amber)"></i><span class="sec-title">Registro completo de pausas</span><span class="sec-badge sb-a">${sorted.length}</span></div>
+    <div class="ct-table">${sorted.map(r=>{
+      const dias = diasEnPausa(r);
+      const bx = dias===null?'bx-gr':dias>60?'bx-r':dias>30?'bx-a':'bx-gr';
+      const av = (dias!==null&&dias>60)?'av-r':'av-a';
+      const meta = [r.MOTIVO, r.EQUIPO, 'Desde '+(r.INICIO||'—'), r.RET_EST?('Retorno est. '+r.RET_EST):'', r.NOTAS].filter(Boolean).join(' · ');
+      return `<div class="ct-row">
+        <div class="ct-av ${av}">${initials(r.NOMBRE)}</div>
+        <div class="ct-info"><div class="ct-name">${r.NOMBRE}</div><div class="ct-meta">${meta}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">
+          <span class="badge ${bx}">${dias===null?'Sin fecha':dias+' días'}</span>
+          <span class="badge bx-gr" style="font-size:9px">${r.CATEGORIA}</span>
+        </div>
+      </div>`;
+    }).join('')}</div></div>`;
+  det.innerHTML = html;
+
+  // ── Charts ──
+  destroyChart('pausasMotivo');
+  const c1 = g('chartPausasMotivo');
+  if(c1) CHARTS.pausasMotivo = new Chart(c1,{
+    type:'bar',
+    data:{labels:cats.map(c=>c[0]),datasets:[{label:'Pausas activas',data:cats.map(c=>c[1]),backgroundColor:'rgba(245,158,11,.7)',borderRadius:4,barPercentage:.7}]},
+    options:{...JSON.parse(JSON.stringify(CHART_DEFAULTS)),indexAxis:'y'}
+  });
+
+  const porEq = {};
+  activas.forEach(r=>{ porEq[r.EQUIPO] = (porEq[r.EQUIPO]||0)+1; });
+  const eqs = Object.entries(porEq).sort((a,b)=>a[0].localeCompare(b[0]));
+  destroyChart('pausasEquipo');
+  const c2 = g('chartPausasEquipo');
+  if(c2) CHARTS.pausasEquipo = new Chart(c2,{
+    type:'doughnut',
+    data:{labels:eqs.map(e=>e[0]),datasets:[{data:eqs.map(e=>e[1]),backgroundColor:['#3B82F6','#22C55E','#F59E0B','#6B7280'],borderColor:['rgba(59,130,246,.3)','rgba(34,197,94,.3)','rgba(245,158,11,.3)','rgba(107,114,128,.3)'],borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#9CA3AF',font:{family:'Inter',size:11},padding:15}},tooltip:CHART_DEFAULTS.plugins.tooltip}}
+  });
+
+  const porMes = groupByMonth(rows,'INICIO');
+  destroyChart('pausasMes');
+  const c3 = g('chartPausasMes');
+  if(c3) CHARTS.pausasMes = new Chart(c3,{
+    type:'bar',
+    data:{labels:porMes.map(m=>m.label),datasets:[{label:'Pausas nuevas',data:porMes.map(m=>m.count),backgroundColor:'rgba(168,85,247,.7)',borderRadius:4,barPercentage:.7}]},
+    options:JSON.parse(JSON.stringify(CHART_DEFAULTS))
+  });
+
+  const buckets = [0,0,0,0];
+  activas.forEach(r=>{ const d = diasEnPausa(r); if(d===null) return; if(d<=15) buckets[0]++; else if(d<=30) buckets[1]++; else if(d<=60) buckets[2]++; else buckets[3]++; });
+  destroyChart('pausasAntig');
+  const c4 = g('chartPausasAntig');
+  if(c4) CHARTS.pausasAntig = new Chart(c4,{
+    type:'bar',
+    data:{labels:['0–15 días','16–30 días','31–60 días','+60 días'],datasets:[{label:'Pausas activas',data:buckets,backgroundColor:['rgba(34,197,94,.7)','rgba(245,158,11,.5)','rgba(245,158,11,.8)','rgba(239,68,68,.7)'],borderRadius:4,barPercentage:.7}]},
+    options:JSON.parse(JSON.stringify(CHART_DEFAULTS))
+  });
+}
+
+/* ═══════════════════════════════════════
    LOAD ALL
    ═══════════════════════════════════════ */
 async function loadAll(){
@@ -1863,17 +2036,18 @@ async function loadAll(){
   setStatus('idle','Cargando...');
   let errores = 0;
 
-  const [dEq1, dEq2, dEq3, dDisp, dAdh, dCalendly] = await Promise.all([
+  const [dEq1, dEq2, dEq3, dDisp, dAdh, dCalendly, dPausas] = await Promise.all([
     fetchSheet(URLS.eq1, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.eq2, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.eq3, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.disponibilidad, 'PROFESIONAL', 'PROFESIONAL'),
     fetchSheet(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
     loadCalendlyData(),
+    fetchPausas(),
   ]);
 
   // Almacenar datos globales
-  RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.adh = dAdh;
+  RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.adh = dAdh; RAW.pausas = dPausas;
 
   // Disponibilidad: Calendly (EQ2 y EQ3 en tiempo real) + Sheets (resto)
   if(dCalendly && dCalendly.length){
@@ -1899,6 +2073,8 @@ async function loadAll(){
   else { ['disponibilidad-all','disponibilidad-eq1','disponibilidad-eq2','disponibilidad-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar DISPONIBILIDAD.'); }); errores++; }
   if(dAdh.length){ try{ renderAdh(dAdh); }catch(e){ console.error('Adh error',e); errores++; } }
   else { ['adherencia-all','adherencia-eq1','adherencia-eq2','adherencia-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar ADHERENCIA.'); }); errores++; }
+  if(dPausas.length){ try{ renderPausas(dPausas); }catch(e){ console.error('Pausas error',e); errores++; } }
+  else { g('pausas-metricas').innerHTML = emptyState('No se pudo cargar el REGISTRO DE PAUSAS.'); g('pausas-detalle').innerHTML = ''; errores++; }
 
   // Render charts
   try{ renderHistorico(); }catch(e){ console.error('Historico error',e); errores++; }
