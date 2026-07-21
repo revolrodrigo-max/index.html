@@ -14,7 +14,10 @@
  *  5. Copiar la URL que termina en /exec y pegarla en el panel de IA del dashboard.
  */
 
-const GEMINI_MODEL = 'gemini-2.5-flash';   // modelo con capa gratuita
+// Se prueban en orden y se recuerda el primero que funcione (Google rota los
+// modelos gratuitos disponibles; "gemini-flash-latest" es el alias que apunta
+// siempre al flash vigente).
+const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-3-flash', 'gemini-2.5-flash'];
 const LIMITE_DIARIO = 300;                 // tope de consultas por día (anti-abuso)
 const MAX_TOKENS_RESPUESTA = 1024;
 
@@ -45,31 +48,42 @@ function doPost(e) {
       };
     });
 
-    const resp = UrlFetchApp.fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/' + GEMINI_MODEL + ':generateContent?key=' + apiKey,
-      {
-        method: 'post',
-        contentType: 'application/json',
-        muteHttpExceptions: true,
-        payload: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: contents,
-          generationConfig: { maxOutputTokens: MAX_TOKENS_RESPUESTA, temperature: 0.3 },
-        }),
+    // Probar modelos en orden; el que funcione queda cacheado para las próximas
+    const payload = JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: contents,
+      generationConfig: { maxOutputTokens: MAX_TOKENS_RESPUESTA, temperature: 0.3 },
+    });
+    const cacheado = props.getProperty('MODELO_OK');
+    const candidatos = cacheado
+      ? [cacheado].concat(GEMINI_MODELS.filter(function (m) { return m !== cacheado; }))
+      : GEMINI_MODELS.slice();
+
+    let ultimoError = 'sin modelos disponibles';
+    for (let i = 0; i < candidatos.length; i++) {
+      const modelo = candidatos[i];
+      const resp = UrlFetchApp.fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/' + modelo + ':generateContent?key=' + apiKey,
+        { method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: payload }
+      );
+      const data = JSON.parse(resp.getContentText());
+
+      if (resp.getResponseCode() === 200) {
+        const texto = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts
+          ? data.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('')
+          : '';
+        props.setProperty('MODELO_OK', modelo);
+        props.setProperty(claveUso, String(usadas + 1));
+        return out({ ok: true, text: texto || 'No obtuve respuesta del modelo.', model: modelo });
       }
-    );
 
-    const data = JSON.parse(resp.getContentText());
-    if (resp.getResponseCode() !== 200) {
-      return out({ ok: false, error: (data.error && data.error.message) || ('HTTP ' + resp.getResponseCode()) });
+      ultimoError = (data.error && data.error.message) || ('HTTP ' + resp.getResponseCode());
+      // Si el error es de modelo no disponible/inexistente, probamos el siguiente; si es otro (clave inválida, cuota), cortamos
+      const esErrorDeModelo = resp.getResponseCode() === 404 || /model|available|found/i.test(ultimoError);
+      if (!esErrorDeModelo) break;
+      if (modelo === cacheado) props.deleteProperty('MODELO_OK');
     }
-
-    const texto = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts
-      ? data.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('')
-      : '';
-
-    props.setProperty(claveUso, String(usadas + 1));
-    return out({ ok: true, text: texto || 'No obtuve respuesta del modelo.' });
+    return out({ ok: false, error: ultimoError });
   } catch (err) {
     return out({ ok: false, error: String(err) });
   }
