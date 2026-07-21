@@ -317,6 +317,30 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .ph-ac{font-size:11px;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-top:6px}
 .ph-ac-text{color:var(--text);margin-bottom:5px;line-height:1.4}
 .ph-ac-footer{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* ══ ASISTENTE IA ══ */
+.ai-fab{position:fixed;bottom:22px;right:22px;width:48px;height:48px;border-radius:50%;background:var(--green);color:#000;border:none;cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(199,255,0,.35);z-index:60;transition:transform .15s}
+.ai-fab:hover{transform:scale(1.08)}
+.ai-panel{position:fixed;bottom:80px;right:22px;width:380px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 120px);background:var(--s1);border:1px solid var(--border2);border-radius:14px;display:none;flex-direction:column;z-index:61;box-shadow:0 12px 40px rgba(0,0,0,.55);overflow:hidden}
+.ai-panel.open{display:flex}
+.ai-hdr{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--s2)}
+.ai-hdr-title{font-size:12px;font-weight:700;letter-spacing:.3px}
+.ai-hdr-sub{font-size:9px;color:var(--muted);font-family:'DM Mono',monospace}
+.ai-close{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px}
+.ai-close:hover{color:var(--text)}
+.ai-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.ai-msg{max-width:88%;padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+.ai-msg.user{align-self:flex-end;background:var(--gbg);border:1px solid var(--gborder);color:var(--text)}
+.ai-msg.bot{align-self:flex-start;background:var(--s2);border:1px solid var(--border);color:var(--text)}
+.ai-msg.err{align-self:flex-start;background:var(--rbg);border:1px solid var(--rborder);color:var(--red)}
+.ai-msg.loading{color:var(--muted);font-style:italic}
+.ai-input-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);background:var(--s2)}
+.ai-input{flex:1;background:var(--s1);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:8px 10px;font-family:'Inter',sans-serif;outline:none;resize:none}
+.ai-input:focus{border-color:var(--gborder)}
+.ai-send{background:var(--green);color:#000;border:none;border-radius:8px;padding:0 14px;cursor:pointer;font-weight:700;font-size:13px}
+.ai-send:disabled{opacity:.4;cursor:default}
+.ai-setup{padding:16px;font-size:11px;color:var(--muted);line-height:1.6}
+.ai-setup input{width:100%;margin-top:8px;background:var(--s2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;padding:8px 10px;font-family:'DM Mono',monospace;outline:none}
+.ai-setup button{margin-top:8px;background:var(--green);color:#000;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-weight:700;font-size:11px}
 </style>
 </head>
 <body>
@@ -457,6 +481,31 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
     </div>
   </div>
   <div id="pausas-detalle"></div>
+</div>
+
+<!-- ══ ASISTENTE IA ══ -->
+<button class="ai-fab" id="aiFab" onclick="toggleAiChat()" title="Asistente de métricas"><i class="ti ti-sparkles"></i></button>
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-hdr">
+    <i class="ti ti-sparkles" style="color:var(--green)"></i>
+    <div>
+      <div class="ai-hdr-title">Asistente de métricas</div>
+      <div class="ai-hdr-sub" id="aiHdrSub">Gemini · responde sobre KPIs y su lógica</div>
+    </div>
+    <button class="ai-close" onclick="toggleAiChat()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="ai-setup" id="aiSetup" style="display:none">
+    <strong style="color:var(--text)">Configurar el asistente</strong><br>
+    Pegá la URL del proxy de Apps Script (termina en <code>/exec</code>).
+    Instrucciones completas en el archivo <code>proxy-ia-gemini.gs</code> del repositorio.
+    <input type="text" id="aiProxyInput" placeholder="https://script.google.com/macros/s/.../exec">
+    <button onclick="saveAiProxy()">Guardar</button>
+  </div>
+  <div class="ai-msgs" id="aiMsgs" style="display:none"></div>
+  <div class="ai-input-row" id="aiInputRow" style="display:none">
+    <textarea class="ai-input" id="aiInput" rows="1" placeholder="Ej: ¿cómo se calcula riesgo de baja?" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAi();}"></textarea>
+    <button class="ai-send" id="aiSend" onclick="sendAi()"><i class="ti ti-arrow-up"></i></button>
+  </div>
 </div>
 
 <!-- ══ PATIENT HISTORY PANEL ══ -->
@@ -2180,6 +2229,154 @@ function renderPausas(rows){
     data:{labels:['0–15 días','16–30 días','31–60 días','+60 días'],datasets:[{label:'Pausas activas',data:buckets,backgroundColor:['rgba(34,197,94,.7)','rgba(245,158,11,.5)','rgba(245,158,11,.8)','rgba(239,68,68,.7)'],borderRadius:4,barPercentage:.7}]},
     options:JSON.parse(JSON.stringify(CHART_DEFAULTS))
   });
+}
+
+/* ═══════════════════════════════════════
+   ASISTENTE IA (proxy Apps Script → Gemini)
+   La clave de la API vive en el Apps Script, nunca acá.
+   Al modelo solo se le envían AGREGADOS (sin nombres de pacientes).
+   ═══════════════════════════════════════ */
+const PROXY_AI_URL = ''; // opcional: hardcodear la URL /exec del proxy; si está vacío se usa la guardada en el navegador
+let AI_MSGS = [];
+let AI_BUSY = false;
+
+function getAiProxyUrl(){
+  return PROXY_AI_URL || localStorage.getItem('tb_ai_proxy') || '';
+}
+function saveAiProxy(){
+  const url = g('aiProxyInput').value.trim();
+  if(!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)){
+    alert('La URL debe ser de script.google.com y terminar en /exec');
+    return;
+  }
+  localStorage.setItem('tb_ai_proxy', url);
+  refreshAiPanelState();
+}
+function refreshAiPanelState(){
+  const configured = !!getAiProxyUrl();
+  g('aiSetup').style.display = configured ? 'none' : 'block';
+  g('aiMsgs').style.display = configured ? 'flex' : 'none';
+  g('aiInputRow').style.display = configured ? 'flex' : 'none';
+  if(configured && !AI_MSGS.length){
+    addAiMsg('bot', 'Hola 👋 Puedo explicarte cualquier métrica del dashboard: cómo se calcula, de qué planilla sale y qué dicen los números de hoy. ¿Qué querés saber?');
+  }
+}
+function toggleAiChat(){
+  const p = g('aiPanel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')){
+    refreshAiPanelState();
+    if(getAiProxyUrl()) g('aiInput').focus();
+  }
+}
+function addAiMsg(kind, text){
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + kind;
+  div.textContent = text;
+  g('aiMsgs').appendChild(div);
+  g('aiMsgs').scrollTop = g('aiMsgs').scrollHeight;
+  return div;
+}
+
+/* Contexto: definiciones de métricas + KPIs agregados calculados en vivo */
+function buildAiContext(){
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const eqs = [['Equipo 1', RAW.eq1], ['Equipo 2', RAW.eq2], ['Equipo 3', RAW.eq3]];
+  let programa = '';
+  let totalPad = 0;
+  eqs.forEach(([nombre, rows])=>{
+    const act = rows.filter(r=>(r.ESTADO||'').toUpperCase()==='ACTIVO').length;
+    const pau = rows.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUSA')).length;
+    totalPad += rows.length;
+    programa += `- ${nombre}: ${rows.length} pacientes (${act} activos, ${pau} en pausa)\n`;
+  });
+
+  let pausas = 'Sin datos (planilla no cargada).';
+  if(RAW.pausas.length){
+    const activas = RAW.pausas.filter(r=>(r.ESTADO||'').toUpperCase().includes('PAUS') && !r.RET_REAL);
+    const porCat = {}, porEq = {};
+    activas.forEach(r=>{ porCat[r.CATEGORIA]=(porCat[r.CATEGORIA]||0)+1; porEq[r.EQUIPO]=(porEq[r.EQUIPO]||0)+1; });
+    const conDias = activas.map(diasEnPausa).filter(d=>d!==null);
+    const promDias = conDias.length ? Math.round(conDias.reduce((a,b)=>a+b,0)/conDias.length) : 0;
+    const riesgo = activas.filter(r=>r.CATEGORIA==='Sin respuesta' && (diasEnPausa(r)||0) >= RIESGO_BAJA_DIAS).length;
+    const porMes = groupByMonth(RAW.pausas,'INICIO').map(m=>`${m.label}: ${m.count}`).join(' · ');
+    pausas = `Pausas activas: ${activas.length}` +
+      (totalPad ? ` (${Math.round(activas.length/totalPad*100)}% del padrón de ${totalPad})` : '') +
+      `\nPor motivo: ${Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`${c}: ${n}`).join(' · ')}` +
+      `\nPor equipo: ${Object.entries(porEq).sort().map(([e,n])=>`${e}: ${n}`).join(' · ')}` +
+      `\nDías promedio en pausa: ${promDias} · En riesgo de baja (Sin respuesta ≥${RIESGO_BAJA_DIAS}d): ${riesgo}` +
+      `\nPausas nuevas por mes: ${porMes}`;
+  }
+
+  let adh = 'Sin datos.';
+  if(RAW.adh.length){
+    const nivel = (kw)=>RAW.adh.filter(r=>(r['NIVEL RIESGO']||'').toLowerCase().includes(kw)).length;
+    adh = `Registros de adherencia: ${RAW.adh.length} · Críticos: ${nivel('crít')+nivel('crit')} · Moderados: ${nivel('moder')}`;
+  }
+
+  let disp = 'Sin datos.';
+  if(RAW.disp.length){
+    const ocup = RAW.disp.map(r=>parseFloat(String(r['OCUP %']||'').replace('%','').replace(',','.'))).filter(n=>!isNaN(n));
+    if(ocup.length) disp = `Ocupación promedio de profesionales: ${Math.round(ocup.reduce((a,b)=>a+b,0)/ocup.length)}% (${RAW.disp.length} registros de agenda)`;
+  }
+
+  return `Sos el asistente de métricas del Dashboard COO de Testo Boost (programa de salud remoto para hombres +35, 3 equipos clínicos). Tu trabajo es ayudar a los colaboradores a entender las métricas: qué miden, cómo se calculan, de qué planilla salen y qué dicen los números actuales. Respondé SIEMPRE en español, de forma clara y breve. Si te preguntan algo que no está en este contexto, decilo honestamente en lugar de inventar. No des consejos médicos.
+
+DEFINICIONES Y FÓRMULAS (documentadas en la pestaña Docs):
+- En pausa (activas): filas del Registro de Pausas con Estado "Pausado" y sin fecha real de retorno.
+- % del padrón: pausas activas ÷ total de pacientes de las 3 planillas de equipo × 100.
+- Sin respuesta: pausas activas cuyo motivo se normaliza a "Sin respuesta" (motivo es texto libre en la planilla; el dashboard lo agrupa en categorías: Sin respuesta, Asunto médico, Laboral/trabajo, Vacaciones, Asuntos personales, No conforme, Otro).
+- Riesgo de baja: pausas "Sin respuesta" con ≥${typeof RIESGO_BAJA_DIAS!=='undefined'?RIESGO_BAJA_DIAS:14} días en pausa (hoy − fecha de inicio). Candidatos a recontacto urgente o baja.
+- Días promedio en pausa: promedio de (hoy − fecha inicio) sobre pausas activas con fecha válida.
+- Nuevas este mes / proyección: pausas iniciadas el mes actual; proyección = nuevas ÷ día del mes × días del mes.
+- Vs mes anterior: variación % de pausas nuevas entre mes actual y anterior.
+- Reactivados: filas con fecha real de retorno o Estado distinto de "Pausado".
+- Tasa de pausa por equipo: pausas activas del equipo ÷ padrón del equipo × 100 (revela retención real, no solo conteo bruto).
+- Antigüedad: buckets 0–15 / 16–30 / 31–60 / +60 días; alerta ámbar >30d, roja >60d.
+- Estado de pacientes (planillas de equipo): ACTIVO / EN PAUSA / FINALIZADO; cierres = fecha FIN del programa.
+- Fuentes: Google Sheets publicados como CSV — planillas de pacientes por equipo, Registro de Pausas de Alumnos, Adherencia y Disponibilidad. El dashboard es 100% client-side.
+
+DATOS ACTUALES (agregados, actualizados ${new Date().toLocaleDateString('es-AR')} ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}):
+PROGRAMA:\n${programa}
+PAUSAS:\n${pausas}
+ADHERENCIA: ${adh}
+DISPONIBILIDAD: ${disp}
+
+Nota: no tenés acceso a datos individuales de pacientes, solo agregados. Si piden detalle por paciente, indicá que lo vean en la tabla correspondiente del dashboard.`;
+}
+
+async function sendAi(){
+  if(AI_BUSY) return;
+  const input = g('aiInput');
+  const q = input.value.trim();
+  if(!q) return;
+  input.value = '';
+  addAiMsg('user', q);
+  AI_MSGS.push({role:'user', text:q});
+
+  AI_BUSY = true;
+  g('aiSend').disabled = true;
+  const loader = addAiMsg('bot loading', 'Pensando…');
+  try{
+    // Sin header Content-Type: el POST viaja como text/plain y evita el preflight CORS que Apps Script no maneja
+    const r = await fetch(getAiProxyUrl(), {
+      method:'POST',
+      body: JSON.stringify({ system: buildAiContext(), messages: AI_MSGS }),
+    });
+    const data = await r.json();
+    loader.remove();
+    if(data.ok){
+      addAiMsg('bot', data.text);
+      AI_MSGS.push({role:'assistant', text:data.text});
+    } else {
+      addAiMsg('err', 'Error del proxy: ' + (data.error||'desconocido'));
+    }
+  }catch(e){
+    loader.remove();
+    addAiMsg('err', 'No se pudo contactar el proxy. Verificá la URL y que la implementación tenga acceso "Cualquier persona". (' + e.message + ')');
+  }
+  AI_BUSY = false;
+  g('aiSend').disabled = false;
 }
 
 /* ═══════════════════════════════════════
