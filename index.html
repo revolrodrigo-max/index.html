@@ -428,8 +428,17 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 <!-- ══ PAUSAS ══ -->
 <div id="page-pausas" class="page">
+  <div id="pausas-insights"></div>
   <div id="pausas-metricas"></div>
   <div class="chart-grid">
+    <div class="chart-box">
+      <div class="chart-box-title"><i class="ti ti-chart-bar" style="color:var(--red)"></i> Motivos por mes (composición)</div>
+      <div class="chart-wrap"><canvas id="chartPausasMotivoMes"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-box-title"><i class="ti ti-activity" style="color:var(--green)"></i> Tasa de pausa por equipo (% del padrón)</div>
+      <div class="chart-wrap"><canvas id="chartPausasTasaEq"></canvas></div>
+    </div>
     <div class="chart-box">
       <div class="chart-box-title"><i class="ti ti-chart-bar" style="color:var(--amber)"></i> Pausas por motivo</div>
       <div class="chart-wrap"><canvas id="chartPausasMotivo"></canvas></div>
@@ -581,6 +590,41 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">SEMANA DEL PROGRAMA</td><td class="doc-desc">Texto</td><td class="doc-desc">Semana actual dentro del programa</td></tr>
         <tr><td class="doc-col">RENOVÓ</td><td class="doc-desc">Enum</td><td class="doc-desc">SI | NO | (vacío = pendiente)</td></tr>
         <tr><td class="doc-col">Notas Cierre</td><td class="doc-desc">Texto</td><td class="doc-desc">Observaciones del cierre</td></tr>
+      </table>
+    </div>
+
+    <!-- Diccionario REGISTRO DE PAUSAS -->
+    <div class="doc-card">
+      <div class="doc-card-title"><i class="ti ti-vocabulary" style="color:var(--amber)"></i> Diccionario: REGISTRO DE PAUSAS</div>
+      <table class="doc-table">
+        <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+        <tr><td class="doc-col">Nombre del alumno</td><td class="doc-desc">Texto</td><td class="doc-desc">Nombre completo del alumno pausado</td></tr>
+        <tr><td class="doc-col">Fecha de inicio de pausa</td><td class="doc-desc">Fecha</td><td class="doc-desc">DD/MM/AAAA — desde cuándo está pausado</td></tr>
+        <tr><td class="doc-col">Motivo</td><td class="doc-desc">Texto</td><td class="doc-desc">Texto libre; el dashboard lo normaliza en categorías: Sin respuesta, Asunto médico, Laboral / trabajo, Vacaciones, Asuntos personales, No conforme, Otro</td></tr>
+        <tr><td class="doc-col">Fecha estimada de retorno</td><td class="doc-desc">Fecha</td><td class="doc-desc">Cuándo se espera que vuelva (hoy casi siempre vacía — completarla habilita alertas de retorno)</td></tr>
+        <tr><td class="doc-col">Estado</td><td class="doc-desc">Enum</td><td class="doc-desc">Pausado | (otro valor = ya no está en pausa)</td></tr>
+        <tr><td class="doc-col">(col. F, sin encabezado)</td><td class="doc-desc">Texto</td><td class="doc-desc">Equipo del alumno; se normaliza "Equipo2" → "Equipo 2"</td></tr>
+        <tr><td class="doc-col">Fecha real de retorno</td><td class="doc-desc">Fecha</td><td class="doc-desc">Si tiene valor, cuenta como reactivado</td></tr>
+        <tr><td class="doc-col">Notas</td><td class="doc-desc">Texto</td><td class="doc-desc">Observaciones libres</td></tr>
+      </table>
+    </div>
+
+    <!-- Métricas de PAUSAS: definiciones y fórmulas -->
+    <div class="doc-card">
+      <div class="doc-card-title"><i class="ti ti-calculator" style="color:var(--amber)"></i> Métricas de Pausas — definiciones y fórmulas</div>
+      <table class="doc-table">
+        <tr><th>Métrica</th><th>Fórmula</th><th>Fuente</th></tr>
+        <tr><td class="doc-col">En pausa (activas)</td><td class="doc-desc">Filas con Estado = "Pausado" y sin Fecha real de retorno</td><td class="doc-desc">Registro de Pausas</td></tr>
+        <tr><td class="doc-col">% del padrón</td><td class="doc-desc">Pausas activas ÷ total de pacientes de las 3 planillas de equipo × 100</td><td class="doc-desc">Registro + EQ1/2/3</td></tr>
+        <tr><td class="doc-col">Sin respuesta</td><td class="doc-desc">Pausas activas con motivo normalizado "Sin respuesta"; % sobre pausas activas</td><td class="doc-desc">Registro de Pausas</td></tr>
+        <tr><td class="doc-col">Riesgo de baja</td><td class="doc-desc">Sin respuesta con ≥14 días en pausa (hoy − fecha inicio)</td><td class="doc-desc">Registro de Pausas</td></tr>
+        <tr><td class="doc-col">Días prom. en pausa</td><td class="doc-desc">Promedio de (hoy − fecha inicio) sobre pausas activas con fecha válida</td><td class="doc-desc">Registro de Pausas</td></tr>
+        <tr><td class="doc-col">Nuevas este mes / proyección</td><td class="doc-desc">Pausas con inicio en el mes actual; proyección = nuevas ÷ día del mes × días del mes</td><td class="doc-desc">Registro de Pausas</td></tr>
+        <tr><td class="doc-col">Vs mes anterior</td><td class="doc-desc">(Nuevas mes actual − nuevas mes anterior) ÷ nuevas mes anterior × 100</td><td class="doc-desc">Registro de Pausas</td></tr>
+        <tr><td class="doc-col">Prom. mensual</td><td class="doc-desc">Total de pausas registradas ÷ cantidad de meses con al menos una pausa</td><td class="doc-desc">Registro de Pausas</td></tr>
+        <tr><td class="doc-col">Reactivados</td><td class="doc-desc">Filas con Fecha real de retorno o Estado distinto de "Pausado"</td><td class="doc-desc">Registro de Pausas</td></tr>
+        <tr><td class="doc-col">Tasa de pausa por equipo</td><td class="doc-desc">Pausas activas del equipo ÷ padrón del equipo × 100</td><td class="doc-desc">Registro + EQ1/2/3</td></tr>
+        <tr><td class="doc-col">Antigüedad (buckets)</td><td class="doc-desc">Días en pausa agrupados: 0–15, 16–30, 31–60, +60; alerta ámbar &gt;30d, roja &gt;60d</td><td class="doc-desc">Registro de Pausas</td></tr>
       </table>
     </div>
 
@@ -1890,6 +1934,7 @@ function showEq(section, eq, btn){
    columna de equipo SIN encabezado (índice 5), por eso se parsea
    por índice de columna y no por nombre.
    ═══════════════════════════════════════ */
+const RIESGO_BAJA_DIAS = 14; // Sin respuesta >= N días => riesgo de baja
 function normalizeEquipoPausa(s){
   const m = (s||'').match(/(\d)/);
   return m ? 'Equipo '+m[1] : 'Sin equipo';
@@ -1950,14 +1995,83 @@ function renderPausas(rows){
   const conDias = activas.map(diasEnPausa).filter(d=>d!==null);
   const promDias = conDias.length ? Math.round(conDias.reduce((a,b)=>a+b,0)/conDias.length) : 0;
 
+  // ── Riesgo de baja: Sin respuesta hace >= RIESGO_BAJA_DIAS días ──
+  const riesgoBaja = activas.filter(r=>r.CATEGORIA==='Sin respuesta' && (diasEnPausa(r)||0) >= RIESGO_BAJA_DIAS);
+
+  // ── Ritmo mensual (sobre TODAS las pausas registradas, no solo activas) ──
+  const porMes = groupByMonth(rows,'INICIO');
+  const promMensual = porMes.length ? Math.round(porMes.reduce((a,m)=>a+m.count,0)/porMes.length*10)/10 : 0;
+  const hoy = new Date();
+  const curKey = hoy.getFullYear()*100 + hoy.getMonth();
+  const prevD = new Date(hoy.getFullYear(), hoy.getMonth()-1, 1);
+  const prevKey = prevD.getFullYear()*100 + prevD.getMonth();
+  const curMesCount = (porMes.find(m=>m.key===curKey)||{}).count||0;
+  const prevMesCount = (porMes.find(m=>m.key===prevKey)||{}).count||0;
+  const varMes = prevMesCount ? Math.round((curMesCount-prevMesCount)/prevMesCount*100) : null;
+  const diasMes = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate();
+  const proyMes = hoy.getDate() ? Math.round(curMesCount/hoy.getDate()*diasMes) : curMesCount;
+
   cont.innerHTML = `<div class="metrics">
     <div class="mc amber"><div class="mc-label">En pausa</div><div class="mc-val a">${activas.length}</div><div class="mc-sub">Pausas activas</div></div>
     <div class="mc blue"><div class="mc-label">% del padrón</div><div class="mc-val b">${pctPad===null?'—':pctPad+'%'}</div><div class="mc-sub">${totalPad ? activas.length+' de '+totalPad+' pacientes' : 'Padrón sin cargar'}</div></div>
     <div class="mc red"><div class="mc-label">Sin respuesta</div><div class="mc-val r">${sinResp.length}</div><div class="mc-sub">${pctSinResp}% de las pausas</div></div>
+    <div class="mc red"><div class="mc-label">Riesgo de baja</div><div class="mc-val r">${riesgoBaja.length}</div><div class="mc-sub">Sin respuesta ≥${RIESGO_BAJA_DIAS} días</div></div>
     <div class="mc purple"><div class="mc-label">Días prom. en pausa</div><div class="mc-val p">${promDias}</div><div class="mc-sub">Pausas activas</div></div>
-    <div class="mc orange"><div class="mc-label">Nuevas este mes</div><div class="mc-val o">${nuevasMes.length}</div><div class="mc-sub">Mes actual</div></div>
+    <div class="mc orange"><div class="mc-label">Nuevas este mes</div><div class="mc-val o">${nuevasMes.length}</div><div class="mc-sub">Proyección: ~${proyMes} al ritmo actual</div></div>
+    <div class="mc ${varMes!==null&&varMes>0?'red':'green'}"><div class="mc-label">Vs mes anterior</div><div class="mc-val ${varMes!==null&&varMes>0?'r':'g'}">${varMes===null?'—':(varMes>0?'+':'')+varMes+'%'}</div><div class="mc-sub">${curMesCount} vs ${prevMesCount} pausas nuevas</div></div>
+    <div class="mc blue"><div class="mc-label">Prom. mensual</div><div class="mc-val b">${promMensual}</div><div class="mc-sub">Pausas nuevas por mes</div></div>
     <div class="mc green"><div class="mc-label">Reactivados</div><div class="mc-val g">${reactivadas.length}</div><div class="mc-sub">Con retorno registrado</div></div>
   </div>`;
+
+  // ── Insights automáticos ──
+  const insEl = g('pausas-insights');
+  if(insEl){
+    const catCountIns = {};
+    activas.forEach(r=>{ catCountIns[r.CATEGORIA] = (catCountIns[r.CATEGORIA]||0)+1; });
+    const topCat = Object.entries(catCountIns).sort((a,b)=>b[1]-a[1])[0];
+    const nuevasMesSinResp = nuevasMes.filter(r=>r.CATEGORIA==='Sin respuesta').length;
+    const pctMesSinResp = nuevasMes.length ? Math.round(nuevasMesSinResp/nuevasMes.length*100) : 0;
+    const peakMes = porMes.length ? porMes.reduce((a,m)=>m.count>a.count?m:a) : null;
+    // Tasa de pausa por equipo (pausas activas / padrón del equipo)
+    const padrones = {'Equipo 1':RAW.eq1.length,'Equipo 2':RAW.eq2.length,'Equipo 3':RAW.eq3.length};
+    const tasas = Object.entries(padrones).filter(([,n])=>n>0).map(([eq,n])=>{
+      const p = activas.filter(r=>r.EQUIPO===eq).length;
+      return {eq, pausas:p, padron:n, tasa:Math.round(p/n*100)};
+    }).sort((a,b)=>b.tasa-a.tasa);
+    const peorEq = tasas[0];
+    const criticas = activas.filter(r=>(diasEnPausa(r)||0)>30);
+    const criticasSinRet = criticas.filter(r=>!r.RET_EST);
+
+    const insight = (icon, av, titulo, detalle, badge, bx) => `<div class="ct-row">
+      <div class="ct-av ${av}"><i class="ti ${icon}"></i></div>
+      <div class="ct-info"><div class="ct-name">${titulo}</div><div class="ct-meta">${detalle}</div></div>
+      ${badge!==null?`<span class="badge ${bx}">${badge}</span>`:''}
+    </div>`;
+
+    let items = '';
+    if(varMes!==null) items += insight(varMes>0?'ti-trending-up':'ti-trending-down', varMes>0?'av-r':'av-b',
+      `Las pausas nuevas ${varMes>0?'suben':'bajan'} ${Math.abs(varMes)}% vs el mes anterior`,
+      `${curMesCount} en lo que va del mes contra ${prevMesCount} el mes pasado · proyección de ~${proyMes} al ritmo actual · promedio histórico: ${promMensual}/mes${peakMes?` · pico: ${peakMes.label} (${peakMes.count})`:''}`,
+      (varMes>0?'+':'')+varMes+'%', varMes>0?'bx-r':'bx-gr');
+    if(topCat) items += insight('ti-message-off','av-r',
+      `"${topCat[0]}" es el motivo dominante: ${Math.round(topCat[1]/activas.length*100)}% de las pausas activas`,
+      `${topCat[1]} de ${activas.length} casos · en las pausas nuevas de este mes representa el ${pctMesSinResp==null?'—':pctMesSinResp}%${topCat[0]==='Sin respuesta'?' · es un problema de proceso de contacto, no de producto':''}`,
+      topCat[1], 'bx-r');
+    if(peorEq) items += insight('ti-users','av-a',
+      `${peorEq.eq} tiene la mayor tasa de pausa: ${peorEq.tasa}% de su padrón`,
+      tasas.map(t=>`${t.eq}: ${t.pausas} de ${t.padron} (${t.tasa}%)`).join(' · '),
+      peorEq.tasa+'%', 'bx-a');
+    if(riesgoBaja.length) items += insight('ti-alert-triangle','av-r',
+      `${riesgoBaja.length} pausas en riesgo de baja (Sin respuesta ≥${RIESGO_BAJA_DIAS} días)`,
+      `Candidatos a recontacto urgente o baja: ${riesgoBaja.slice(0,5).map(r=>r.NOMBRE.split(' ')[0]+' '+(r.NOMBRE.split(' ')[1]||'')).join(', ')}${riesgoBaja.length>5?` y ${riesgoBaja.length-5} más`:''}`,
+      riesgoBaja.length, 'bx-r');
+    if(criticas.length) items += insight('ti-clock','av-a',
+      `${criticas.length} pausas superan los 30 días${criticasSinRet.length===criticas.length?' y ninguna tiene fecha estimada de retorno':criticasSinRet.length?` · ${criticasSinRet.length} sin fecha estimada de retorno`:''}`,
+      `Sin fecha de retorno la pausa es una baja silenciosa: definir retorno estimado o pasar a baja formal`,
+      criticas.length, 'bx-a');
+
+    insEl.innerHTML = items ? `<div class="section"><div class="sec-hdr"><i class="ti ti-bulb" style="color:var(--green)"></i><span class="sec-title">Insights automáticos</span><span class="sec-badge sb-g">calculados de la planilla</span></div><div class="ct-table">${items}</div></div>` : '';
+  }
 
   // ── Distribución por motivo (con %) ──
   const catCount = {};
@@ -2008,13 +2122,53 @@ function renderPausas(rows){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#9CA3AF',font:{family:'Inter',size:11},padding:15}},tooltip:CHART_DEFAULTS.plugins.tooltip}}
   });
 
-  const porMes = groupByMonth(rows,'INICIO');
   destroyChart('pausasMes');
   const c3 = g('chartPausasMes');
   if(c3) CHARTS.pausasMes = new Chart(c3,{
     type:'bar',
     data:{labels:porMes.map(m=>m.label),datasets:[{label:'Pausas nuevas',data:porMes.map(m=>m.count),backgroundColor:'rgba(168,85,247,.7)',borderRadius:4,barPercentage:.7}]},
     options:JSON.parse(JSON.stringify(CHART_DEFAULTS))
+  });
+
+  // ── Motivos por mes (barras apiladas por categoría) ──
+  const CAT_COLORS = {'Sin respuesta':'rgba(239,68,68,.75)','Asunto médico':'rgba(59,130,246,.75)','Laboral / trabajo':'rgba(245,158,11,.75)','Vacaciones':'rgba(34,197,94,.75)','Asuntos personales':'rgba(168,85,247,.75)','No conforme':'rgba(236,72,153,.75)','Otro':'rgba(107,114,128,.6)'};
+  const mesCat = {};
+  rows.forEach(r=>{
+    const d = parseDate(r.INICIO);
+    if(!d) return;
+    const key = d.getFullYear()*100 + d.getMonth();
+    if(!mesCat[key]) mesCat[key] = {};
+    mesCat[key][r.CATEGORIA] = (mesCat[key][r.CATEGORIA]||0)+1;
+  });
+  const catsPresentes = Object.keys(CAT_COLORS).filter(c=>rows.some(r=>r.CATEGORIA===c));
+  const stackOpts = JSON.parse(JSON.stringify(CHART_DEFAULTS));
+  stackOpts.scales.x.stacked = true; stackOpts.scales.y.stacked = true;
+  destroyChart('pausasMotivoMes');
+  const c5 = g('chartPausasMotivoMes');
+  if(c5) CHARTS.pausasMotivoMes = new Chart(c5,{
+    type:'bar',
+    data:{
+      labels:porMes.map(m=>m.label),
+      datasets:catsPresentes.map(cat=>({label:cat,data:porMes.map(m=>(mesCat[m.key]||{})[cat]||0),backgroundColor:CAT_COLORS[cat],borderRadius:2,barPercentage:.7}))
+    },
+    options:stackOpts
+  });
+
+  // ── Tasa de pausa por equipo (% del padrón) ──
+  const padronesEq = {'Equipo 1':RAW.eq1.length,'Equipo 2':RAW.eq2.length,'Equipo 3':RAW.eq3.length};
+  const tasasEq = Object.entries(padronesEq).map(([eq,n])=>{
+    const p = activas.filter(r=>r.EQUIPO===eq).length;
+    return {eq, pausas:p, padron:n, tasa:n?Math.round(p/n*100):0};
+  });
+  const tasaOpts = JSON.parse(JSON.stringify(CHART_DEFAULTS));
+  tasaOpts.scales.y.ticks.callback = v=>v+'%';
+  tasaOpts.plugins.tooltip = {...CHART_DEFAULTS.plugins.tooltip};
+  destroyChart('pausasTasaEq');
+  const c6 = g('chartPausasTasaEq');
+  if(c6) CHARTS.pausasTasaEq = new Chart(c6,{
+    type:'bar',
+    data:{labels:tasasEq.map(t=>t.eq),datasets:[{label:'% del padrón en pausa',data:tasasEq.map(t=>t.tasa),backgroundColor:['rgba(59,130,246,.75)','rgba(34,197,94,.75)','rgba(245,158,11,.75)'],borderRadius:4,barPercentage:.6}]},
+    options:{...tasaOpts,plugins:{...tasaOpts.plugins,tooltip:{...tasaOpts.plugins.tooltip,callbacks:{label:(ctx)=>{const t=tasasEq[ctx.dataIndex];return ` ${t.tasa}% — ${t.pausas} de ${t.padron} pacientes`;}}}}}
   });
 
   const buckets = [0,0,0,0];
