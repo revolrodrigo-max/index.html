@@ -487,6 +487,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 <!-- ══ AGENDAS CALENDLY ══ -->
 <div id="page-agendas" class="page">
   <div id="agendas-metricas"></div>
+  <div id="agendas-dia"></div>
   <div id="agendas-charts" style="display:none">
     <div class="chart-grid">
       <div class="chart-box">
@@ -727,7 +728,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">PACIENTE / NOMBRE / APELLIDO</td><td class="doc-desc">Texto</td><td class="doc-desc">Nombre completo del que agendó; NOMBRE y APELLIDO separados solo si el formulario de Calendly los pide por separado</td></tr>
         <tr><td class="doc-col">EMAIL</td><td class="doc-desc">Texto</td><td class="doc-desc">Email del paciente</td></tr>
         <tr><td class="doc-col">FECHA / HORA</td><td class="doc-desc">Fecha</td><td class="doc-desc">Inicio de la sesión (AAAA-MM-DD, hora de Argentina)</td></tr>
-        <tr><td class="doc-col">ESTADO</td><td class="doc-desc">Enum</td><td class="doc-desc">Activa | Cancelada</td></tr>
+        <tr><td class="doc-col">ESTADO</td><td class="doc-desc">Enum</td><td class="doc-desc">Activa | Cancelada (crudo de Calendly). El dashboard deriva para auditoría: <strong>Realizada</strong> (activa y ya pasó su horario, sin no-show), <strong>Programada</strong> (activa a futuro), <strong>Cancelada</strong>, <strong>No-show</strong>. % de concreción = realizadas ÷ agendas pasadas × 100</td></tr>
         <tr><td class="doc-col">NO SHOW</td><td class="doc-desc">Enum</td><td class="doc-desc">SI si el profesional lo marcó como ausente en Calendly</td></tr>
         <tr><td class="doc-col">CREADO</td><td class="doc-desc">Fecha</td><td class="doc-desc">Cuándo el paciente hizo el agendamiento</td></tr>
         <tr><td class="doc-col">MOTIVO CANCELACIÓN</td><td class="doc-desc">Texto</td><td class="doc-desc">Motivo y quién canceló (si aplica)</td></tr>
@@ -2026,6 +2027,29 @@ function renderEqCharts(rows, suffix, color){
    ═══════════════════════════════════════ */
 let AGENDAS_META = { updated: '' };
 let AGENDAS_VIEW = [];
+let AGENDAS_DIA = null;        // día seleccionado en la auditoría (YYYY-MM-DD)
+let AGENDAS_FILTRO = 'todas';  // filtro por estado del detalle
+
+// Estado derivado para auditoría: una agenda activa cuya fecha/hora ya pasó y no
+// fue marcada no-show se considera "realizada" (Calendly no confirma asistencia).
+function fechaHoraAgenda(r){
+  const d = parseDate(r.FECHA); if(!d) return null;
+  const [h,m] = (r.HORA||'0:0').split(':').map(Number);
+  const dt = new Date(d); dt.setHours(h||0, m||0, 0, 0); return dt;
+}
+function estadoAgenda(r){
+  if(r.ESTADO==='Cancelada') return 'cancelada';
+  if((r['NO SHOW']||'')==='SI') return 'noshow';
+  const dt = fechaHoraAgenda(r);
+  return dt && dt<=new Date() ? 'realizada' : 'programada';
+}
+const ESTADO_META = {
+  realizada:{lbl:'Realizada', cls:'bx-g'},
+  programada:{lbl:'Programada', cls:'bx-b'},
+  cancelada:{lbl:'Cancelada', cls:'bx-r'},
+  noshow:{lbl:'No-show', cls:'bx-o'},
+};
+function isoDia(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 async function fetchAgendas(){
   if(!CALENDLY_AGENDAS_URL) return null; // aún no configurado
@@ -2069,25 +2093,40 @@ function renderAgendas(rows){
     return;
   }
 
+  const ahora = new Date();
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const en7 = new Date(hoy); en7.setDate(hoy.getDate()+7); en7.setHours(23,59,59,999);
   const activas = rows.filter(r=>r.ESTADO==='Activa');
   const canceladas = rows.filter(r=>r.ESTADO==='Cancelada');
-  const noshows = rows.filter(r=>(r['NO SHOW']||'')==='SI');
+  const noshows = rows.filter(r=>estadoAgenda(r)==='noshow');
+  const realizadas = rows.filter(r=>estadoAgenda(r)==='realizada');
+  const pasadas = rows.filter(r=>{const dt=fechaHoraAgenda(r); return dt&&dt<=ahora;});
+  const concrecion = pasadas.length ? Math.round(realizadas.length/pasadas.length*100) : null;
+  const pctNoShow = pasadas.length ? Math.round(noshows.length/pasadas.length*100) : 0;
   const proximas = activas.filter(r=>{const d=parseDate(r.FECHA); return d&&d>=hoy;});
   const prox7 = proximas.filter(r=>{const d=parseDate(r.FECHA); return d&&d<=en7;});
+  // "Hoy" siempre sobre el registro completo, independiente del filtro de período
+  const hoyStr = isoDia(hoy);
+  const deHoy = RAW.agendas.filter(r=>r.FECHA===hoyStr);
+  const deHoyCancel = deHoy.filter(r=>r.ESTADO==='Cancelada').length;
   const pacientes = new Set(rows.map(r=>(r.EMAIL||r.PACIENTE||'').toLowerCase().trim()).filter(Boolean));
   const pctCancel = rows.length ? Math.round(canceladas.length/rows.length*100) : 0;
+  const semCnt = groupByWeek(rows,'FECHA').length;
+  const promSem = semCnt ? Math.round(rows.length/semCnt*10)/10 : 0;
 
   met.innerHTML = `<div class="metrics">
-    <div class="mc green"><div class="mc-label">Agendas</div><div class="mc-val g">${rows.length}</div><div class="mc-sub">En el período filtrado</div></div>
-    <div class="mc blue"><div class="mc-label">Pacientes únicos</div><div class="mc-val b">${pacientes.size}</div><div class="mc-sub">Por email/nombre</div></div>
+    <div class="mc green"><div class="mc-label">Agendas</div><div class="mc-val g">${rows.length}</div><div class="mc-sub">Período filtrado · ~${promSem}/semana</div></div>
+    <div class="mc blue"><div class="mc-label">Hoy</div><div class="mc-val b">${deHoy.length-deHoyCancel}</div><div class="mc-sub">${deHoyCancel?deHoyCancel+' canceladas hoy':'Sin cancelaciones hoy'}</div></div>
+    <div class="mc green"><div class="mc-label">Realizadas</div><div class="mc-val g">${realizadas.length}</div><div class="mc-sub">${concrecion===null?'Sin agendas pasadas':concrecion+'% de concreción'}</div></div>
     <div class="mc purple"><div class="mc-label">Próximas</div><div class="mc-val p">${proximas.length}</div><div class="mc-sub">Desde hoy en adelante</div></div>
     <div class="mc amber"><div class="mc-label">Próximos 7 días</div><div class="mc-val a">${prox7.length}</div><div class="mc-sub">Agendas activas</div></div>
+    <div class="mc blue"><div class="mc-label">Pacientes únicos</div><div class="mc-val b">${pacientes.size}</div><div class="mc-sub">Por email/nombre</div></div>
     <div class="mc red"><div class="mc-label">Canceladas</div><div class="mc-val r">${canceladas.length}</div><div class="mc-sub">${pctCancel}% del total</div></div>
-    <div class="mc orange"><div class="mc-label">No-shows</div><div class="mc-val o">${noshows.length}</div><div class="mc-sub">Marcados en Calendly</div></div>
+    <div class="mc orange"><div class="mc-label">No-shows</div><div class="mc-val o">${noshows.length}</div><div class="mc-sub">${pctNoShow}% de las pasadas</div></div>
   </div>
-  <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin:-8px 0 16px">Último sync del registro: ${AGENDAS_META.updated||'—'} · Se actualiza solo cada hora</div>`;
+  <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin:-8px 0 16px">Último sync del registro: ${AGENDAS_META.updated||'—'} · Se actualiza solo cada hora · "Realizada" = pasó su horario sin cancelación ni no-show</div>`;
+
+  renderAgendasDia();
 
   // ── Resumen por profesional ──
   const profMap = {};
@@ -2106,7 +2145,7 @@ function renderAgendas(rows){
     <div class="sec-hdr"><i class="ti ti-stethoscope" style="color:var(--green)"></i><span class="sec-title">Agendas por profesional</span><span class="sec-badge sb-g">${profList.length}</span></div>
     <div class="ct-table">${profList.map(p=>{
       const pc = p.total ? Math.round(p.cancel/p.total*100) : 0;
-      return `<div class="ct-row">
+      return `<div class="ct-row" style="cursor:pointer" title="Ver detalle de ${p.nombre}" onclick="const s=g('agSearch'); if(s){s.value='${p.nombre.replace(/'/g,"\\'")}'; renderAgendasLista(s.value); s.scrollIntoView({behavior:'smooth',block:'center'});}">
         <div class="ct-av av-g">${initials(p.nombre)}</div>
         <div class="ct-info"><div class="ct-name">${p.nombre}</div><div class="ct-meta">${[p.rol,p.cuenta].filter(Boolean).join(' · ')}</div></div>
         <span class="badge bx-g">${p.total} agendas</span>
@@ -2149,13 +2188,18 @@ function renderAgendas(rows){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#9CA3AF',font:{family:'Inter',size:11},padding:12}},tooltip:CHART_DEFAULTS.plugins.tooltip}}
   });
 
-  // ── Detalle con buscador ──
+  // ── Detalle con buscador + filtros por estado + export ──
   AGENDAS_VIEW = [...rows].sort((a,b)=>String(b.FECHA+' '+b.HORA).localeCompare(String(a.FECHA+' '+a.HORA)));
+  const PILLS = [['todas','Todas'],['programada','Programadas'],['realizada','Realizadas'],['cancelada','Canceladas'],['noshow','No-shows']];
   det.innerHTML = `<div class="section">
-    <div class="sec-hdr"><i class="ti ti-calendar-event" style="color:var(--blue)"></i><span class="sec-title">Detalle de agendamientos</span><span class="sec-badge sb-b" id="agCount">${AGENDAS_VIEW.length}</span></div>
-    <div class="adh-search-bar">
-      <div class="adh-search-wrap"><i class="ti ti-search"></i>
-        <input class="adh-search-input" id="agSearch" placeholder="Buscar por paciente, profesional o evento..." oninput="renderAgendasLista(this.value)">
+    <div class="sec-hdr"><i class="ti ti-calendar-event" style="color:var(--blue)"></i><span class="sec-title">Detalle de agendamientos</span><span class="sec-badge sb-b" id="agCount">${AGENDAS_VIEW.length}</span>
+      <button class="adh2-hist-btn" style="margin-left:10px" onclick="exportarAgendasCSV()" title="Descarga lo que está filtrado abajo"><i class="ti ti-download"></i> Exportar CSV</button></div>
+    <div class="adh-search-bar" style="flex-wrap:wrap">
+      <div class="adh-search-wrap" style="min-width:220px"><i class="ti ti-search"></i>
+        <input class="adh-search-input" id="agSearch" placeholder="Buscar por paciente, profesional, evento o email..." oninput="renderAgendasLista(this.value)">
+      </div>
+      <div class="adh2-pills" id="agEstadoPills">${PILLS.map(([k,lbl])=>
+        `<button class="adh2-pill${AGENDAS_FILTRO===k?' active':''}" data-f="${k}" onclick="setFiltroAgendas('${k}',this)">${lbl}</button>`).join('')}
       </div>
     </div>
     <div id="agLista"></div>
@@ -2163,27 +2207,123 @@ function renderAgendas(rows){
   renderAgendasLista('');
 }
 
-function renderAgendasLista(query){
+function filtrarAgendas(query){
   const q = (query||'').toLowerCase().trim();
-  const filtradas = q
-    ? AGENDAS_VIEW.filter(r=>[r.PACIENTE,r.PROFESIONAL,r.EVENTO,r.EMAIL].some(v=>(v||'').toLowerCase().includes(q)))
-    : AGENDAS_VIEW;
+  return AGENDAS_VIEW.filter(r=>{
+    if(AGENDAS_FILTRO!=='todas' && estadoAgenda(r)!==AGENDAS_FILTRO) return false;
+    if(q && ![r.PACIENTE,r.PROFESIONAL,r.EVENTO,r.EMAIL,r.CUENTA].some(v=>(v||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+
+function setFiltroAgendas(f, btn){
+  AGENDAS_FILTRO = f;
+  document.querySelectorAll('#agEstadoPills .adh2-pill').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderAgendasLista(g('agSearch') ? g('agSearch').value : '');
+}
+
+function renderAgendasLista(query){
+  const filtradas = filtrarAgendas(query);
   const el = g('agLista'); if(!el) return;
   const cnt = g('agCount'); if(cnt) cnt.textContent = filtradas.length;
   const CAP = 250;
   el.innerHTML = filtradas.length ? `<div class="ct-table">${filtradas.slice(0,CAP).map(r=>{
-    const cancel = r.ESTADO==='Cancelada';
+    const e = estadoAgenda(r), m = ESTADO_META[e];
     const fecha = (r.FECHA||'').split('-').reverse().join('/');
-    return `<div class="ct-row">
-      <div class="ct-av ${cancel?'av-r':'av-b'}">${initials(r.PACIENTE)}</div>
+    return `<div class="ct-row" title="${r.EMAIL||''}${r['MOTIVO CANCELACIÓN']?' · Cancelación: '+r['MOTIVO CANCELACIÓN']:''}">
+      <div class="ct-av ${e==='cancelada'?'av-r':e==='noshow'?'av-a':'av-b'}">${initials(r.PACIENTE)}</div>
       <div class="ct-info"><div class="ct-name">${r.PACIENTE||'—'}</div>
         <div class="ct-meta">${r.PROFESIONAL||'Sin profesional'} · ${r.EVENTO||''} · ${r.CUENTA||''}</div></div>
       <span class="badge bx-gr">${fecha} ${r.HORA||''}</span>
-      <span class="badge ${cancel?'bx-r':'bx-g'}">${r.ESTADO||''}</span>
-      ${(r['NO SHOW']||'')==='SI'?'<span class="badge bx-o">No-show</span>':''}
+      <span class="badge ${m.cls}">${m.lbl}</span>
     </div>`;
-  }).join('')}</div>${filtradas.length>CAP?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:8px">Mostrando ${CAP} de ${filtradas.length} — refiná la búsqueda o el período.</div>`:''}`
+  }).join('')}</div>${filtradas.length>CAP?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:8px">Mostrando ${CAP} de ${filtradas.length} — refiná la búsqueda, el filtro de estado o el período. El export CSV incluye todo.</div>`:''}`
   : emptyState('Sin agendamientos que coincidan.');
+}
+
+function exportarAgendasCSV(){
+  const rows = filtrarAgendas(g('agSearch') ? g('agSearch').value : '');
+  const cols = ['CUENTA','PROFESIONAL','ROL','EVENTO','PACIENTE','EMAIL','FECHA','HORA','ESTADO','CREADO','MOTIVO CANCELACIÓN'];
+  const esc = v => { v = String(v==null?'':v); return /[";\n,]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+  const csv = '﻿' + cols.join(';') + '\n' +
+    rows.map(r=>cols.map(c=>esc(c==='ESTADO' ? ESTADO_META[estadoAgenda(r)].lbl : r[c])).join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download = 'agendas_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* ── Auditoría del día: agendas por profesional (formato tipo Disponibilidad) ── */
+function renderAgendasDia(){
+  const cont = g('agendas-dia'); if(!cont) return;
+  if(!AGENDAS_DIA) AGENDAS_DIA = isoDia(new Date());
+  const delDia = RAW.agendas.filter(r=>r.FECHA===AGENDAS_DIA);
+  const esHoy = AGENDAS_DIA===isoDia(new Date());
+  const d = parseDate(AGENDAS_DIA);
+  const lbl = d ? d.toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit'}) : AGENDAS_DIA;
+
+  const cnt = {realizada:0, programada:0, cancelada:0, noshow:0};
+  delDia.forEach(r=>cnt[estadoAgenda(r)]++);
+
+  // Todos los profesionales conocidos, aunque no tengan agendas ese día (auditar días vacíos)
+  const profs = {};
+  RAW.agendas.forEach(r=>{
+    const n = (r.PROFESIONAL||'').trim()||'Sin asignar';
+    if(!profs[n]) profs[n] = {nombre:n, rol:r.ROL||'', cuenta:r.CUENTA||'', ses:[]};
+  });
+  delDia.forEach(r=>{ profs[(r.PROFESIONAL||'').trim()||'Sin asignar'].ses.push(r); });
+  const lista = Object.values(profs).sort((a,b)=> b.ses.length-a.ses.length || a.nombre.localeCompare(b.nombre));
+
+  cont.innerHTML = `<div class="section">
+    <div class="sec-hdr"><i class="ti ti-clipboard-check" style="color:var(--green)"></i><span class="sec-title">Auditoría del día — agendas por profesional</span><span class="sec-badge sb-g">${delDia.length} agendas</span></div>
+    <div class="adh2-nav">
+      <div class="adh2-nav-label"><i class="ti ti-calendar"></i> Día</div>
+      <button class="adh2-hist-btn" onclick="moverDiaAgendas(-1)" title="Día anterior"><i class="ti ti-chevron-left"></i></button>
+      <input type="date" class="tf-input" value="${AGENDAS_DIA}" onchange="setDiaAgendas(this.value)">
+      <button class="adh2-hist-btn" onclick="moverDiaAgendas(1)" title="Día siguiente"><i class="ti ti-chevron-right"></i></button>
+      ${esHoy?'<span class="badge bx-g">HOY</span>':'<button class="adh2-pill" onclick="setDiaAgendas(null)">Volver a hoy</button>'}
+      <span class="tf-range-info" style="text-transform:capitalize">${lbl}</span>
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge bx-g">${cnt.realizada} realizadas</span>
+        <span class="badge bx-b">${cnt.programada} programadas</span>
+        <span class="badge bx-r">${cnt.cancelada} canceladas</span>
+        <span class="badge bx-o">${cnt.noshow} no-show</span>
+      </span>
+    </div>
+    <div class="disp-grid" style="margin-top:12px">${lista.map(p=>{
+      const ses = [...p.ses].sort((a,b)=>String(a.HORA).localeCompare(String(b.HORA)));
+      const nCancel = ses.filter(r=>estadoAgenda(r)==='cancelada').length;
+      const nNo = ses.filter(r=>estadoAgenda(r)==='noshow').length;
+      const cardCls = 'disp-card'+(ses.length ? (nNo?' disp-crit':nCancel?' disp-warn':'') : '');
+      return `<div class="${cardCls}"${ses.length?'':' style="opacity:.45"'}>
+        <div class="prof-top">
+          <div class="av ${ses.length?'av-g':'av-b'}">${initials(p.nombre)}</div>
+          <div style="flex:1;min-width:0"><div class="prof-name">${p.nombre}</div><div class="prof-role">${[p.rol,p.cuenta].filter(Boolean).join(' · ')}</div></div>
+          <span class="badge ${ses.length?'bx-g':'bx-gr'}">${ses.length} ${ses.length===1?'agenda':'agendas'}</span>
+        </div>
+        ${ses.length ? `<div style="display:flex;flex-direction:column;gap:4px">${ses.map(r=>{
+          const m = ESTADO_META[estadoAgenda(r)];
+          return `<div class="ac-row" style="align-items:center" title="${r.EMAIL||''} · ${r.EVENTO||''}${r['MOTIVO CANCELACIÓN']?' · '+r['MOTIVO CANCELACIÓN']:''}">
+            <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);flex-shrink:0">${r.HORA||'—'}</span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.PACIENTE||'—'}</span>
+            <span class="badge ${m.cls}" style="flex-shrink:0">${m.lbl}</span>
+          </div>`;
+        }).join('')}</div>`
+        : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:2px 0">Sin agendas este día</div>`}
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+}
+function moverDiaAgendas(delta){
+  const d = parseDate(AGENDAS_DIA) || new Date();
+  d.setDate(d.getDate()+delta);
+  AGENDAS_DIA = isoDia(d);
+  renderAgendasDia();
+}
+function setDiaAgendas(v){
+  AGENDAS_DIA = v || isoDia(new Date());
+  renderAgendasDia();
 }
 
 /* ═══════════════════════════════════════
