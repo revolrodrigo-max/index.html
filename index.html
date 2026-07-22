@@ -841,8 +841,8 @@ let CALENDLY_STATUS = 'idle'; // 'idle' | 'ok' | 'error'
    ═══════════════════════════════════════ */
 const CALENDLY_PROXY_URL = 'https://script.google.com/macros/s/AKfycbxJa4KcHaEDdGl0WVpNGxmWQc08IRsuBoZMmlgT_hoiI1CwI1SyEVjuiYKlxhqvd6P4pg/exec';
 const CALENDLY_PROXY_URL_EQ3 = 'https://script.google.com/macros/s/AKfycbzOlcWmC-kMs-XTlYBZVyVFdj9q1VIORA1V6rZUEjRTrFolf20y00PmeA3NxoD9YKL9vg/exec';
-// Proxy de AGENDAS (quién agendó con quién) — pegar la URL /exec del deploy de proxy-calendly-agendas.gs
-const CALENDLY_AGENDAS_URL = '';
+// Proxy de AGENDAS (quién agendó con quién) — deploy de proxy-calendly-agendas.gs
+const CALENDLY_AGENDAS_URL = 'https://script.google.com/macros/s/AKfycbwSYKEio8pwCRPe5dKCNvI-zMtS_V0kg8UdgxBFVlLfadl3DKPzFpj9DiqST4XjyWtR/exec';
 
 async function loadCalendlyProxy(url){
   const r = await fetch(url);
