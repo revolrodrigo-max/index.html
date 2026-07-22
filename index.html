@@ -368,6 +368,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
       <button class="main-tab" onclick="showMain('disponibilidad',this)">Disponibilidad</button>
       <button class="main-tab" onclick="showMain('adherencia',this)">Adherencia</button>
       <button class="main-tab" onclick="showMain('pausas',this)">Pausas</button>
+      <button class="main-tab" onclick="showMain('agendas',this)">Agendas</button>
       <button class="main-tab" onclick="showMain('historico',this)">Histórico</button>
       <button class="main-tab" onclick="showMain('docs',this)">Docs</button>
     </div>
@@ -483,6 +484,29 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
   <div id="pausas-detalle"></div>
 </div>
 
+<!-- ══ AGENDAS CALENDLY ══ -->
+<div id="page-agendas" class="page">
+  <div id="agendas-metricas"></div>
+  <div id="agendas-charts" style="display:none">
+    <div class="chart-grid">
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-chart-line" style="color:var(--green)"></i> Agendas por semana</div>
+        <div class="chart-wrap"><canvas id="chartAgSemana"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-users" style="color:var(--blue)"></i> Agendas por profesional</div>
+        <div class="chart-wrap"><canvas id="chartAgProf"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-category" style="color:var(--purple)"></i> Agendas por tipo de evento</div>
+        <div class="chart-wrap"><canvas id="chartAgEvento"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div id="agendas-profs"></div>
+  <div id="agendas-detalle"></div>
+</div>
+
 <!-- ══ ASISTENTE IA ══ -->
 <button class="ai-fab" id="aiFab" onclick="toggleAiChat()" title="Asistente de métricas"><i class="ti ti-sparkles"></i></button>
 <div class="ai-panel" id="aiPanel">
@@ -581,7 +605,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 <div id="page-docs" class="page">
 
   <div class="section">
-    <div class="sec-hdr"><i class="ti ti-file-description" style="color:var(--blue)"></i><span class="sec-title">Documentación del Dashboard</span><span class="sec-badge sb-b">v3.1</span></div>
+    <div class="sec-hdr"><i class="ti ti-file-description" style="color:var(--blue)"></i><span class="sec-title">Documentación del Dashboard</span><span class="sec-badge sb-b">v3.2</span></div>
   </div>
 
   <div class="docs-grid">
@@ -622,6 +646,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">DISPONIBILIDAD</td><td class="doc-desc">Agenda profesionales — slots, ocupación</td><td><span class="doc-tag bx-b">Periódica</span></td></tr>
         <tr><td class="doc-col">PROFESIONALES</td><td class="doc-desc">Master de profesionales — rol, equipo, contacto</td><td><span class="doc-tag bx-gr">Referencia</span></td></tr>
         <tr><td class="doc-col">REGISTRO DE PAUSAS</td><td class="doc-desc">Planilla "Registro de pausa alumnos" (documento aparte) — alumno, fecha de inicio, motivo, retorno estimado/real, equipo. Alimenta la pestaña Pausas</td><td><span class="doc-tag bx-a">Al ocurrir</span></td></tr>
+        <tr><td class="doc-col">AGENDAS CALENDLY</td><td class="doc-desc">Planilla "Agendas Calendly — Testo Boost" (documento aparte, se llena SOLA desde la API de Calendly) — paciente, profesional, evento, fecha, estado. Alimenta la pestaña Agendas</td><td><span class="doc-tag bx-g">Cada hora (auto)</span></td></tr>
       </table>
     </div>
 
@@ -674,6 +699,38 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">Reactivados</td><td class="doc-desc">Filas con Fecha real de retorno o Estado distinto de "Pausado"</td><td class="doc-desc">Registro de Pausas</td></tr>
         <tr><td class="doc-col">Tasa de pausa por equipo</td><td class="doc-desc">Pausas activas del equipo ÷ padrón del equipo × 100</td><td class="doc-desc">Registro + EQ1/2/3</td></tr>
         <tr><td class="doc-col">Antigüedad (buckets)</td><td class="doc-desc">Días en pausa agrupados: 0–15, 16–30, 31–60, +60; alerta ámbar &gt;30d, roja &gt;60d</td><td class="doc-desc">Registro de Pausas</td></tr>
+      </table>
+    </div>
+
+    <!-- Fuente AGENDAS CALENDLY -->
+    <div class="doc-card" style="grid-column:1/-1">
+      <div class="doc-card-title"><i class="ti ti-calendar-event" style="color:var(--green)"></i> Fuente: AGENDAS CALENDLY (API)</div>
+      <div class="doc-flow">
+        <div class="doc-flow-step">
+          <div class="doc-flow-num">1</div>
+          <div class="doc-flow-text"><strong>API de Calendly</strong> — El script <code>proxy-calendly-agendas.gs</code> (Apps Script) consulta cada hora las 2 cuentas de Calendly (tokens del lado del servidor, nunca expuestos) y baja todos los agendamientos: paciente (nombre y apellido), profesional (host del evento), tipo de evento, fecha/hora, estado, cancelaciones y no-shows. Ventana: 60 días atrás / 60 adelante.</div>
+        </div>
+        <div class="doc-flow-step">
+          <div class="doc-flow-num">2</div>
+          <div class="doc-flow-text"><strong>Registro histórico</strong> — Cada sync se guarda en la planilla <em>"Agendas Calendly — Testo Boost"</em> (Google Sheets). Las filas viejas nunca se borran: es la documentación permanente de quién agendó con quién. Clave de deduplicación: <code>INVITEE_URI</code>.</div>
+        </div>
+        <div class="doc-flow-step">
+          <div class="doc-flow-num">3</div>
+          <div class="doc-flow-text"><strong>Dashboard</strong> — La pestaña Agendas lee el registro como JSON (<code>doGet</code> del proxy) y calcula métricas respetando el filtro de período global.</div>
+        </div>
+      </div>
+      <table class="doc-table" style="margin-top:10px">
+        <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+        <tr><td class="doc-col">CUENTA</td><td class="doc-desc">Enum</td><td class="doc-desc">Cuenta Calendly de origen (Equipo 2 | Equipo 3)</td></tr>
+        <tr><td class="doc-col">PROFESIONAL / ROL</td><td class="doc-desc">Texto</td><td class="doc-desc">Host del evento, mapeado por UUID de usuario Calendly al nombre y rol que usa el dashboard (mismo mapeo que Disponibilidad)</td></tr>
+        <tr><td class="doc-col">EVENTO</td><td class="doc-desc">Texto</td><td class="doc-desc">Nombre del tipo de evento</td></tr>
+        <tr><td class="doc-col">PACIENTE / NOMBRE / APELLIDO</td><td class="doc-desc">Texto</td><td class="doc-desc">Nombre completo del que agendó; NOMBRE y APELLIDO separados solo si el formulario de Calendly los pide por separado</td></tr>
+        <tr><td class="doc-col">EMAIL</td><td class="doc-desc">Texto</td><td class="doc-desc">Email del paciente</td></tr>
+        <tr><td class="doc-col">FECHA / HORA</td><td class="doc-desc">Fecha</td><td class="doc-desc">Inicio de la sesión (AAAA-MM-DD, hora de Argentina)</td></tr>
+        <tr><td class="doc-col">ESTADO</td><td class="doc-desc">Enum</td><td class="doc-desc">Activa | Cancelada</td></tr>
+        <tr><td class="doc-col">NO SHOW</td><td class="doc-desc">Enum</td><td class="doc-desc">SI si el profesional lo marcó como ausente en Calendly</td></tr>
+        <tr><td class="doc-col">CREADO</td><td class="doc-desc">Fecha</td><td class="doc-desc">Cuándo el paciente hizo el agendamiento</td></tr>
+        <tr><td class="doc-col">MOTIVO CANCELACIÓN</td><td class="doc-desc">Texto</td><td class="doc-desc">Motivo y quién canceló (si aplica)</td></tr>
       </table>
     </div>
 
@@ -752,7 +809,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 
 </div>
 <div class="footer">
-  <span>Testo Boost · Dashboard COO v3.1 · Rodrigo</span>
+  <span>Testo Boost · Dashboard COO v3.2 · Rodrigo</span>
   <span id="fechaFooter"></span>
 </div>
 
@@ -774,7 +831,7 @@ const URLS = {
 /* ═══════════════════════════════════════
    GLOBAL STATE
    ═══════════════════════════════════════ */
-let RAW = { eq1:[], eq2:[], eq3:[], disp:[], adh:[], pausas:[] };
+let RAW = { eq1:[], eq2:[], eq3:[], disp:[], adh:[], pausas:[], agendas:[] };
 let FILTER = { from: null, to: null, mode: 'todo' };
 let CHARTS = {};
 let CALENDLY_STATUS = 'idle'; // 'idle' | 'ok' | 'error'
@@ -784,6 +841,8 @@ let CALENDLY_STATUS = 'idle'; // 'idle' | 'ok' | 'error'
    ═══════════════════════════════════════ */
 const CALENDLY_PROXY_URL = 'https://script.google.com/macros/s/AKfycbxJa4KcHaEDdGl0WVpNGxmWQc08IRsuBoZMmlgT_hoiI1CwI1SyEVjuiYKlxhqvd6P4pg/exec';
 const CALENDLY_PROXY_URL_EQ3 = 'https://script.google.com/macros/s/AKfycbzOlcWmC-kMs-XTlYBZVyVFdj9q1VIORA1V6rZUEjRTrFolf20y00PmeA3NxoD9YKL9vg/exec';
+// Proxy de AGENDAS (quién agendó con quién) — pegar la URL /exec del deploy de proxy-calendly-agendas.gs
+const CALENDLY_AGENDAS_URL = '';
 
 async function loadCalendlyProxy(url){
   const r = await fetch(url);
@@ -1069,6 +1128,7 @@ function rerender(){
   if(RAW.disp.length) try{ renderDisp(RAW.disp); }catch(e){ console.error(e); }
   if(RAW.adh.length) try{ renderAdh(filterRows(RAW.adh, 'FECHA REUNIÓN')); }catch(e){ console.error(e); }
   if(RAW.pausas.length) try{ renderPausas(RAW.pausas); }catch(e){ console.error(e); }
+  try{ renderAgendas(filterRows(RAW.agendas, 'FECHA')); }catch(e){ console.error(e); }
   try{ renderHistorico(); }catch(e){ console.error(e); }
 }
 
@@ -1960,6 +2020,173 @@ function renderEqCharts(rows, suffix, color){
 }
 
 /* ═══════════════════════════════════════
+   AGENDAS CALENDLY — quién agendó y con qué profesional
+   Fuente: proxy-calendly-agendas.gs (API Calendly de las 2 cuentas →
+   registro histórico en Google Sheets → JSON via doGet)
+   ═══════════════════════════════════════ */
+let AGENDAS_META = { updated: '' };
+let AGENDAS_VIEW = [];
+
+async function fetchAgendas(){
+  if(!CALENDLY_AGENDAS_URL) return null; // aún no configurado
+  try{
+    const r = await fetch(CALENDLY_AGENDAS_URL+'?cachebust='+Date.now());
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error||'Proxy error');
+    AGENDAS_META.updated = data.updated||'';
+    return data.rows||[];
+  }catch(e){ console.warn('Agendas Calendly error:', e.message); return []; }
+}
+
+function groupByWeek(rows, dateCol){
+  const map = {};
+  rows.forEach(r=>{
+    const d = parseDate(r[dateCol]); if(!d) return;
+    const mon = new Date(d); const day = mon.getDay();
+    mon.setDate(mon.getDate()-(day===0?6:day-1)); mon.setHours(0,0,0,0);
+    const key = mon.getTime();
+    if(!map[key]) map[key] = {key, label: String(mon.getDate()).padStart(2,'0')+'/'+String(mon.getMonth()+1).padStart(2,'0'), count:0};
+    map[key].count++;
+  });
+  return Object.values(map).sort((a,b)=>a.key-b.key);
+}
+
+function renderAgendas(rows){
+  const met = g('agendas-metricas'), profs = g('agendas-profs'), det = g('agendas-detalle'), charts = g('agendas-charts');
+
+  if(!CALENDLY_AGENDAS_URL){
+    charts.style.display = 'none'; profs.innerHTML = ''; det.innerHTML = '';
+    met.innerHTML = `<div class="empty-state"><i class="ti ti-plug"></i>
+      <p><strong style="color:var(--text)">Fuente de agendas sin configurar.</strong><br><br>
+      1. Deployar el archivo <code>proxy-calendly-agendas.gs</code> del repositorio como Web App (instrucciones en el propio archivo).<br>
+      2. Pegar la URL <code>/exec</code> en la constante <code>CALENDLY_AGENDAS_URL</code> de index.html.</p></div>`;
+    return;
+  }
+  if(!RAW.agendas.length){
+    charts.style.display = 'none'; profs.innerHTML = ''; det.innerHTML = '';
+    met.innerHTML = emptyState('No se pudo cargar AGENDAS CALENDLY. Verificá el proxy y que syncAgendas haya corrido al menos una vez.');
+    return;
+  }
+
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const en7 = new Date(hoy); en7.setDate(hoy.getDate()+7); en7.setHours(23,59,59,999);
+  const activas = rows.filter(r=>r.ESTADO==='Activa');
+  const canceladas = rows.filter(r=>r.ESTADO==='Cancelada');
+  const noshows = rows.filter(r=>(r['NO SHOW']||'')==='SI');
+  const proximas = activas.filter(r=>{const d=parseDate(r.FECHA); return d&&d>=hoy;});
+  const prox7 = proximas.filter(r=>{const d=parseDate(r.FECHA); return d&&d<=en7;});
+  const pacientes = new Set(rows.map(r=>(r.EMAIL||r.PACIENTE||'').toLowerCase().trim()).filter(Boolean));
+  const pctCancel = rows.length ? Math.round(canceladas.length/rows.length*100) : 0;
+
+  met.innerHTML = `<div class="metrics">
+    <div class="mc green"><div class="mc-label">Agendas</div><div class="mc-val g">${rows.length}</div><div class="mc-sub">En el período filtrado</div></div>
+    <div class="mc blue"><div class="mc-label">Pacientes únicos</div><div class="mc-val b">${pacientes.size}</div><div class="mc-sub">Por email/nombre</div></div>
+    <div class="mc purple"><div class="mc-label">Próximas</div><div class="mc-val p">${proximas.length}</div><div class="mc-sub">Desde hoy en adelante</div></div>
+    <div class="mc amber"><div class="mc-label">Próximos 7 días</div><div class="mc-val a">${prox7.length}</div><div class="mc-sub">Agendas activas</div></div>
+    <div class="mc red"><div class="mc-label">Canceladas</div><div class="mc-val r">${canceladas.length}</div><div class="mc-sub">${pctCancel}% del total</div></div>
+    <div class="mc orange"><div class="mc-label">No-shows</div><div class="mc-val o">${noshows.length}</div><div class="mc-sub">Marcados en Calendly</div></div>
+  </div>
+  <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin:-8px 0 16px">Último sync del registro: ${AGENDAS_META.updated||'—'} · Se actualiza solo cada hora</div>`;
+
+  // ── Resumen por profesional ──
+  const profMap = {};
+  rows.forEach(r=>{
+    const nombre = (r.PROFESIONAL||'').trim() || 'Sin asignar';
+    if(!profMap[nombre]) profMap[nombre] = {nombre, rol:r.ROL||'', cuenta:r.CUENTA||'', total:0, prox:0, cancel:0, noshow:0};
+    const p = profMap[nombre];
+    p.total++;
+    if(r.ESTADO==='Cancelada') p.cancel++;
+    if((r['NO SHOW']||'')==='SI') p.noshow++;
+    const d = parseDate(r.FECHA);
+    if(r.ESTADO==='Activa' && d && d>=hoy) p.prox++;
+  });
+  const profList = Object.values(profMap).sort((a,b)=>b.total-a.total);
+  profs.innerHTML = `<div class="section">
+    <div class="sec-hdr"><i class="ti ti-stethoscope" style="color:var(--green)"></i><span class="sec-title">Agendas por profesional</span><span class="sec-badge sb-g">${profList.length}</span></div>
+    <div class="ct-table">${profList.map(p=>{
+      const pc = p.total ? Math.round(p.cancel/p.total*100) : 0;
+      return `<div class="ct-row">
+        <div class="ct-av av-g">${initials(p.nombre)}</div>
+        <div class="ct-info"><div class="ct-name">${p.nombre}</div><div class="ct-meta">${[p.rol,p.cuenta].filter(Boolean).join(' · ')}</div></div>
+        <span class="badge bx-g">${p.total} agendas</span>
+        <span class="badge bx-p">${p.prox} próximas</span>
+        <span class="badge ${pc>=20?'bx-r':'bx-gr'}">${p.cancel} cancel. (${pc}%)</span>
+        ${p.noshow?`<span class="badge bx-o">${p.noshow} no-show</span>`:''}
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+
+  // ── Charts ──
+  charts.style.display = 'block';
+  const semanas = groupByWeek(rows, 'FECHA');
+  destroyChart('agSemana');
+  const c1 = g('chartAgSemana');
+  if(c1) CHARTS.agSemana = new Chart(c1,{
+    type:'line',
+    data:{ labels: semanas.map(s=>s.label),
+      datasets:[{label:'Agendas', data: semanas.map(s=>s.count), borderColor:'#C7FF00', backgroundColor:'rgba(199,255,0,.1)', fill:true, tension:.3, pointRadius:4, pointHoverRadius:6}] },
+    options: JSON.parse(JSON.stringify(CHART_DEFAULTS))
+  });
+  destroyChart('agProf');
+  const c2 = g('chartAgProf');
+  const profOpts = JSON.parse(JSON.stringify(CHART_DEFAULTS)); profOpts.indexAxis = 'y';
+  if(c2) CHARTS.agProf = new Chart(c2,{
+    type:'bar',
+    data:{ labels: profList.map(p=>p.nombre),
+      datasets:[{label:'Agendas', data: profList.map(p=>p.total), backgroundColor:'rgba(0,212,255,.7)', borderRadius:4, barPercentage:.7}] },
+    options: profOpts
+  });
+  const evMap = {};
+  rows.forEach(r=>{ const e=(r.EVENTO||'Sin evento').trim(); evMap[e]=(evMap[e]||0)+1; });
+  const evList = Object.entries(evMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  destroyChart('agEvento');
+  const c3 = g('chartAgEvento');
+  if(c3) CHARTS.agEvento = new Chart(c3,{
+    type:'doughnut',
+    data:{ labels: evList.map(e=>e[0]),
+      datasets:[{data: evList.map(e=>e[1]), backgroundColor:['rgba(199,255,0,.7)','rgba(0,212,255,.7)','rgba(176,79,255,.7)','rgba(255,170,0,.7)','rgba(255,122,0,.7)','rgba(255,68,68,.7)','rgba(34,197,94,.7)','rgba(107,114,128,.5)'], borderColor:'#0D0D0D', borderWidth:2}] },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#9CA3AF',font:{family:'Inter',size:11},padding:12}},tooltip:CHART_DEFAULTS.plugins.tooltip}}
+  });
+
+  // ── Detalle con buscador ──
+  AGENDAS_VIEW = [...rows].sort((a,b)=>String(b.FECHA+' '+b.HORA).localeCompare(String(a.FECHA+' '+a.HORA)));
+  det.innerHTML = `<div class="section">
+    <div class="sec-hdr"><i class="ti ti-calendar-event" style="color:var(--blue)"></i><span class="sec-title">Detalle de agendamientos</span><span class="sec-badge sb-b" id="agCount">${AGENDAS_VIEW.length}</span></div>
+    <div class="adh-search-bar">
+      <div class="adh-search-wrap"><i class="ti ti-search"></i>
+        <input class="adh-search-input" id="agSearch" placeholder="Buscar por paciente, profesional o evento..." oninput="renderAgendasLista(this.value)">
+      </div>
+    </div>
+    <div id="agLista"></div>
+  </div>`;
+  renderAgendasLista('');
+}
+
+function renderAgendasLista(query){
+  const q = (query||'').toLowerCase().trim();
+  const filtradas = q
+    ? AGENDAS_VIEW.filter(r=>[r.PACIENTE,r.PROFESIONAL,r.EVENTO,r.EMAIL].some(v=>(v||'').toLowerCase().includes(q)))
+    : AGENDAS_VIEW;
+  const el = g('agLista'); if(!el) return;
+  const cnt = g('agCount'); if(cnt) cnt.textContent = filtradas.length;
+  const CAP = 250;
+  el.innerHTML = filtradas.length ? `<div class="ct-table">${filtradas.slice(0,CAP).map(r=>{
+    const cancel = r.ESTADO==='Cancelada';
+    const fecha = (r.FECHA||'').split('-').reverse().join('/');
+    return `<div class="ct-row">
+      <div class="ct-av ${cancel?'av-r':'av-b'}">${initials(r.PACIENTE)}</div>
+      <div class="ct-info"><div class="ct-name">${r.PACIENTE||'—'}</div>
+        <div class="ct-meta">${r.PROFESIONAL||'Sin profesional'} · ${r.EVENTO||''} · ${r.CUENTA||''}</div></div>
+      <span class="badge bx-gr">${fecha} ${r.HORA||''}</span>
+      <span class="badge ${cancel?'bx-r':'bx-g'}">${r.ESTADO||''}</span>
+      ${(r['NO SHOW']||'')==='SI'?'<span class="badge bx-o">No-show</span>':''}
+    </div>`;
+  }).join('')}</div>${filtradas.length>CAP?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:8px">Mostrando ${CAP} de ${filtradas.length} — refiná la búsqueda o el período.</div>`:''}`
+  : emptyState('Sin agendamientos que coincidan.');
+}
+
+/* ═══════════════════════════════════════
    NAV
    ═══════════════════════════════════════ */
 function showMain(name, btn){
@@ -2387,7 +2614,7 @@ async function loadAll(){
   setStatus('idle','Cargando...');
   let errores = 0;
 
-  const [dEq1, dEq2, dEq3, dDisp, dAdh, dCalendly, dPausas] = await Promise.all([
+  const [dEq1, dEq2, dEq3, dDisp, dAdh, dCalendly, dPausas, dAgendas] = await Promise.all([
     fetchSheet(URLS.eq1, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.eq2, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
     fetchSheet(URLS.eq3, 'NOMBRE COMPLETO', 'NOMBRE COMPLETO'),
@@ -2395,10 +2622,12 @@ async function loadAll(){
     fetchSheet(URLS.adherencia, 'SEMANA ISO', 'NOMBRE PACIENTE'),
     loadCalendlyData(),
     fetchPausas(),
+    fetchAgendas(),
   ]);
 
   // Almacenar datos globales
   RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.adh = dAdh; RAW.pausas = dPausas;
+  RAW.agendas = dAgendas || [];
 
   // Disponibilidad: Calendly (EQ2 y EQ3 en tiempo real) + Sheets (resto)
   if(dCalendly && dCalendly.length){
@@ -2426,6 +2655,9 @@ async function loadAll(){
   else { ['adherencia-all','adherencia-eq1','adherencia-eq2','adherencia-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar ADHERENCIA.'); }); errores++; }
   if(dPausas.length){ try{ renderPausas(dPausas); }catch(e){ console.error('Pausas error',e); errores++; } }
   else { g('pausas-metricas').innerHTML = emptyState('No se pudo cargar el REGISTRO DE PAUSAS.'); g('pausas-detalle').innerHTML = ''; errores++; }
+  // Agendas: si aún no está configurado el proxy no cuenta como error
+  try{ renderAgendas(filterRows(RAW.agendas, 'FECHA')); if(CALENDLY_AGENDAS_URL && !RAW.agendas.length) errores++; }
+  catch(e){ console.error('Agendas error',e); errores++; }
 
   // Render charts
   try{ renderHistorico(); }catch(e){ console.error('Historico error',e); errores++; }
