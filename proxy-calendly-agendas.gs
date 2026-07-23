@@ -59,10 +59,12 @@ const DIAS_ADELANTE = 60;  // y hacia adelante (lo anterior ya sincronizado se c
 const TZ = 'America/Argentina/Buenos_Aires';
 const NOMBRE_PLANILLA = 'Agendas Calendly — Testo Boost';
 const NOMBRE_HOJA = 'AGENDAS';
+// ASISTIO y REPORTADO son marcas manuales de dirección (se setean desde la
+// pestaña Agendas del dashboard vía doPost) — el sync las preserva siempre.
 const HEADERS = [
   'CUENTA', 'PROFESIONAL', 'ROL', 'EVENTO', 'PACIENTE', 'NOMBRE', 'APELLIDO', 'EMAIL',
   'FECHA', 'HORA', 'ESTADO', 'NO SHOW', 'CREADO', 'MOTIVO CANCELACIÓN',
-  'EVENT_URI', 'INVITEE_URI', 'ULTIMO_SYNC',
+  'EVENT_URI', 'INVITEE_URI', 'ULTIMO_SYNC', 'ASISTIO', 'REPORTADO',
 ];
 
 /* ══════════════ API Calendly ══════════════ */
@@ -185,6 +187,8 @@ function syncAgendas() {
           ev.uri,
           inv.uri,
           ahora,
+          '', // ASISTIO — se preserva de lo existente en el merge
+          '', // REPORTADO — ídem
         ];
       });
     });
@@ -197,9 +201,17 @@ function syncAgendas() {
     ? hoja.getRange(2, 1, hoja.getLastRow() - 1, HEADERS.length).getValues()
     : [];
   const idxInvitee = HEADERS.indexOf('INVITEE_URI');
+  const idxAsistio = HEADERS.indexOf('ASISTIO');
+  const idxReportado = HEADERS.indexOf('REPORTADO');
   const mapa = {};
   existentes.forEach(function (fila) { if (fila[idxInvitee]) mapa[fila[idxInvitee]] = fila; });
-  Object.keys(nuevas).forEach(function (k) { mapa[k] = nuevas[k]; });
+  Object.keys(nuevas).forEach(function (k) {
+    if (mapa[k]) { // preservar las marcas manuales de dirección al re-sincronizar
+      nuevas[k][idxAsistio] = mapa[k][idxAsistio] || '';
+      nuevas[k][idxReportado] = mapa[k][idxReportado] || '';
+    }
+    mapa[k] = nuevas[k];
+  });
 
   const idxFecha = HEADERS.indexOf('FECHA');
   const idxHora = HEADERS.indexOf('HORA');
@@ -238,7 +250,54 @@ function instalarTrigger() {
   console.log('Trigger horario instalado.');
 }
 
+// Si el registro fue creado con una versión anterior (menos columnas),
+// actualiza la fila de encabezados sin tocar los datos.
+function asegurarHeaders_(hoja) {
+  const actuales = hoja.getRange(1, 1, 1, HEADERS.length).getValues()[0];
+  if (HEADERS.some(function (h, i) { return actuales[i] !== h; })) {
+    hoja.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  }
+}
+
 /* ══════════════ WEB APP (JSON para el dashboard) ══════════════ */
+
+// Marca manual de dirección: {inviteeUri, campo: 'ASISTIO'|'REPORTADO', valor: 'SI'|''}
+function doPost(e) {
+  const out = function (obj) {
+    return ContentService.createTextOutput(JSON.stringify(obj))
+      .setMimeType(ContentService.MimeType.JSON);
+  };
+  try {
+    const body = JSON.parse((e.postData && e.postData.contents) || '{}');
+    const campo = body.campo;
+    const uri = String(body.inviteeUri || '');
+    const valor = body.valor === 'SI' ? 'SI' : '';
+    if (campo !== 'ASISTIO' && campo !== 'REPORTADO') return out({ ok: false, error: 'Campo inválido.' });
+    if (!uri) return out({ ok: false, error: 'Falta inviteeUri.' });
+
+    const lock = LockService.getScriptLock();
+    lock.waitLock(10000);
+    try {
+      const hoja = obtenerHoja_();
+      asegurarHeaders_(hoja);
+      const last = hoja.getLastRow();
+      if (last < 2) return out({ ok: false, error: 'Registro vacío.' });
+      const idxUri = HEADERS.indexOf('INVITEE_URI');
+      const uris = hoja.getRange(2, idxUri + 1, last - 1, 1).getValues();
+      for (let i = 0; i < uris.length; i++) {
+        if (uris[i][0] === uri) {
+          hoja.getRange(i + 2, HEADERS.indexOf(campo) + 1).setValue(valor);
+          return out({ ok: true, campo: campo, valor: valor });
+        }
+      }
+      return out({ ok: false, error: 'Agenda no encontrada en el registro.' });
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (err) {
+    return out({ ok: false, error: String(err) });
+  }
+}
 
 function doGet() {
   const out = function (obj) {
@@ -247,6 +306,7 @@ function doGet() {
   };
   try {
     const hoja = obtenerHoja_();
+    asegurarHeaders_(hoja);
     const props = PropertiesService.getScriptProperties();
     if (hoja.getLastRow() < 2) return out({ ok: true, rows: [], updated: props.getProperty('ULTIMO_SYNC') || '' });
     const valores = hoja.getRange(1, 1, hoja.getLastRow(), HEADERS.length).getDisplayValues();

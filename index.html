@@ -732,6 +732,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">NO SHOW</td><td class="doc-desc">Enum</td><td class="doc-desc">SI si el profesional lo marcó como ausente en Calendly</td></tr>
         <tr><td class="doc-col">CREADO</td><td class="doc-desc">Fecha</td><td class="doc-desc">Cuándo el paciente hizo el agendamiento</td></tr>
         <tr><td class="doc-col">MOTIVO CANCELACIÓN</td><td class="doc-desc">Texto</td><td class="doc-desc">Motivo y quién canceló (si aplica)</td></tr>
+        <tr><td class="doc-col">ASISTIO / REPORTADO</td><td class="doc-desc">Enum</td><td class="doc-desc">Marcas manuales de dirección desde la Auditoría del día (SI | vacío): asistencia confirmada y sesión reportada al equipo. Se guardan en la planilla-registro vía el proxy y el sync horario las preserva</td></tr>
       </table>
     </div>
 
@@ -2237,6 +2238,8 @@ function renderAgendasLista(query){
         <div class="ct-meta">${r.PROFESIONAL||'Sin profesional'} · ${r.EVENTO||''} · ${r.CUENTA||''}</div></div>
       <span class="badge bx-gr">${fecha} ${r.HORA||''}</span>
       <span class="badge ${m.cls}">${m.lbl}</span>
+      ${r.ASISTIO==='SI'?'<span class="badge bx-g" title="Asistencia confirmada por dirección"><i class="ti ti-user-check" style="font-size:10px"></i>✓</span>':''}
+      ${r.REPORTADO==='SI'?'<span class="badge bx-b" title="Reportado al equipo"><i class="ti ti-speakerphone" style="font-size:10px"></i>✓</span>':''}
     </div>`;
   }).join('')}</div>${filtradas.length>CAP?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:8px">Mostrando ${CAP} de ${filtradas.length} — refiná la búsqueda, el filtro de estado o el período. El export CSV incluye todo.</div>`:''}`
   : emptyState('Sin agendamientos que coincidan.');
@@ -2244,7 +2247,7 @@ function renderAgendasLista(query){
 
 function exportarAgendasCSV(){
   const rows = filtrarAgendas(g('agSearch') ? g('agSearch').value : '');
-  const cols = ['CUENTA','PROFESIONAL','ROL','EVENTO','PACIENTE','EMAIL','FECHA','HORA','ESTADO','CREADO','MOTIVO CANCELACIÓN'];
+  const cols = ['CUENTA','PROFESIONAL','ROL','EVENTO','PACIENTE','EMAIL','FECHA','HORA','ESTADO','ASISTIO','REPORTADO','CREADO','MOTIVO CANCELACIÓN'];
   const esc = v => { v = String(v==null?'':v); return /[";\n,]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
   const csv = '﻿' + cols.join(';') + '\n' +
     rows.map(r=>cols.map(c=>esc(c==='ESTADO' ? ESTADO_META[estadoAgenda(r)].lbl : r[c])).join(';')).join('\n');
@@ -2265,6 +2268,8 @@ function renderAgendasDia(){
 
   const cnt = {realizada:0, programada:0, cancelada:0, noshow:0};
   delDia.forEach(r=>cnt[estadoAgenda(r)]++);
+  const asistidas = delDia.filter(r=>r.ASISTIO==='SI').length;
+  const sinReportar = delDia.filter(r=>{const e=estadoAgenda(r); return (e==='realizada'||e==='noshow') && r.REPORTADO!=='SI';}).length;
 
   // Todos los profesionales conocidos, aunque no tengan agendas ese día (auditar días vacíos)
   const profs = {};
@@ -2289,6 +2294,8 @@ function renderAgendasDia(){
         <span class="badge bx-b">${cnt.programada} programadas</span>
         <span class="badge bx-r">${cnt.cancelada} canceladas</span>
         <span class="badge bx-o">${cnt.noshow} no-show</span>
+        <span class="badge bx-g">${asistidas} asistencias ✓</span>
+        <span class="badge ${sinReportar?'bx-r':'bx-gr'}">${sinReportar} sin reportar</span>
       </span>
     </div>
     <div class="disp-grid" style="margin-top:12px">${lista.map(p=>{
@@ -2303,11 +2310,13 @@ function renderAgendasDia(){
           <span class="badge ${ses.length?'bx-g':'bx-gr'}">${ses.length} ${ses.length===1?'agenda':'agendas'}</span>
         </div>
         ${ses.length ? `<div style="display:flex;flex-direction:column;gap:4px">${ses.map(r=>{
-          const m = ESTADO_META[estadoAgenda(r)];
-          return `<div class="ac-row" style="align-items:center" title="${r.EMAIL||''} · ${r.EVENTO||''}${r['MOTIVO CANCELACIÓN']?' · '+r['MOTIVO CANCELACIÓN']:''}">
+          const e = estadoAgenda(r), m = ESTADO_META[e];
+          return `<div class="ac-row" style="align-items:center;flex-wrap:wrap" title="${r.EMAIL||''} · ${r.EVENTO||''}${r['MOTIVO CANCELACIÓN']?' · '+r['MOTIVO CANCELACIÓN']:''}">
             <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);flex-shrink:0">${r.HORA||'—'}</span>
             <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.PACIENTE||'—'}</span>
             <span class="badge ${m.cls}" style="flex-shrink:0">${m.lbl}</span>
+            ${e!=='cancelada'?`<button class="adh2-status-btn${r.ASISTIO==='SI'?' done':''}" style="margin-left:0" onclick="toggleMarcaAgenda('${r.INVITEE_URI}','ASISTIO',this)" title="Confirmar que el paciente asistió a la sesión"><i class="ti ti-user-check"></i>${r.ASISTIO==='SI'?'Asistió':'¿Asistió?'}</button>`:''}
+            <button class="adh2-status-btn${r.REPORTADO==='SI'?' done':''}" style="margin-left:0" onclick="toggleMarcaAgenda('${r.INVITEE_URI}','REPORTADO',this)" title="Marcar que la sesión fue reportada al equipo"><i class="ti ti-speakerphone"></i>${r.REPORTADO==='SI'?'Reportado':'Reportar'}</button>
           </div>`;
         }).join('')}</div>`
         : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:2px 0">Sin agendas este día</div>`}
@@ -2324,6 +2333,28 @@ function moverDiaAgendas(delta){
 function setDiaAgendas(v){
   AGENDAS_DIA = v || isoDia(new Date());
   renderAgendasDia();
+}
+
+// Marca de dirección (Asistió / Reportado): actualiza la UI al instante y
+// persiste en la planilla-registro vía doPost del proxy. Si falla, revierte.
+async function toggleMarcaAgenda(uri, campo, btn){
+  const row = RAW.agendas.find(r=>r.INVITEE_URI===uri);
+  if(!row || !CALENDLY_AGENDAS_URL) return;
+  const previo = row[campo]||'';
+  const nuevo = previo==='SI' ? '' : 'SI';
+  row[campo] = nuevo;
+  if(btn) btn.disabled = true;
+  renderAgendasDia();
+  try{
+    const r = await fetch(CALENDLY_AGENDAS_URL, { method:'POST', body: JSON.stringify({inviteeUri:uri, campo:campo, valor:nuevo}) });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error||'Proxy error');
+  }catch(e){
+    row[campo] = previo;
+    renderAgendasDia();
+    alert('No se pudo guardar la marca "'+campo+'": '+e.message+'\n\nSi acabás de agregar esta función, asegurate de haber actualizado el código del proxy en Apps Script y creado una NUEVA VERSIÓN de la implementación.');
+  }
 }
 
 /* ═══════════════════════════════════════
