@@ -126,6 +126,8 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .src-banner i{font-size:15px;flex-shrink:0;color:var(--red);margin-top:1px}
 .src-banner b{color:var(--red)}
 .src-banner .src-detail{color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;display:block;margin-top:3px}
+.src-banner.warn{background:var(--abg);border-color:var(--aborder)}
+.src-banner.warn i,.src-banner.warn b{color:var(--amber)}
 .prof-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:13px 15px;transition:border-color .2s,box-shadow .2s}
 .prof-card:hover{border-color:var(--gborder);box-shadow:var(--glow-sm)}
 .prof-top{display:flex;align-items:center;gap:9px;margin-bottom:10px}
@@ -868,7 +870,13 @@ async function loadCalendlyProxy(url){
   if(!r.ok) throw new Error('Proxy HTTP '+r.status);
   const data = await r.json();
   if(!data.ok) throw new Error(data.error||'Proxy error');
-  return (data.rows||[]).map(row=>({...row, _calendly:true}));
+  return {
+    rows: (data.rows||[]).map(row=>({...row, _calendly:true})),
+    // El proxy sirve su última respuesta buena cuando Calendly no contesta
+    stale: !!data.stale,
+    edadMin: data.edad_minutos ?? null,
+    aviso: data.aviso || null,
+  };
 }
 
 // Carga cada equipo por separado y registra su estado. Devuelve las filas del
@@ -876,13 +884,13 @@ async function loadCalendlyProxy(url){
 // Calendly o se cae a la planilla.
 async function loadCalendlyTeam(equipo, url){
   try{
-    const rows = await loadCalendlyProxy(url);
-    if(!rows.length){
+    const res = await loadCalendlyProxy(url);
+    if(!res.rows.length){
       CALENDLY_STATUS[equipo] = {ok:false, error:'el proxy respondió sin profesionales'};
       return [];
     }
-    CALENDLY_STATUS[equipo] = {ok:true, error:null};
-    return rows;
+    CALENDLY_STATUS[equipo] = {ok:true, error:null, stale:res.stale, edadMin:res.edadMin, aviso:res.aviso};
+    return res.rows;
   }catch(e){
     console.warn('Calendly '+equipo+' error:', e.message);
     CALENDLY_STATUS[equipo] = {ok:false, error:e.message};
@@ -1497,22 +1505,43 @@ function renderDisp(data){
   // scope: 'all' | 'Equipo 1' | 'Equipo 2' | 'Equipo 3'
   function calendlyBanner(scope){
     const equipos = scope === 'all' ? ['Equipo 2','Equipo 3'] : [scope];
-    const caidos = equipos.filter(eq=>CALENDLY_STATUS[eq] && !CALENDLY_STATUS[eq].ok);
-    if(!caidos.length) return '';
-    const stale = ultimaSyncPlanilla
+    const planilla = ultimaSyncPlanilla
       ? `La planilla de respaldo se sincronizó por última vez el ${ultimaSyncPlanilla.fecha} (hace ${ultimaSyncPlanilla.dias} días).`
-      : 'No hay datos de respaldo en la planilla.';
-    return caidos.map(eq=>{
-      const err = CALENDLY_STATUS[eq].error || 'error desconocido';
-      const cuota = /demasiadas veces|too many times|quota/i.test(err);
-      return `<div class="src-banner">
-        <i class="ti ti-plug-connected-x"></i>
-        <div>
-          <b>${eq}: sin datos en vivo de Calendly.</b> ${stale} Lo que ves abajo NO refleja la agenda actual.
-          ${cuota ? '<span class="src-detail">Causa: el proxy de Apps Script agotó su cuota diaria de llamadas (urlfetch). La cuota es por cuenta de Google y se reinicia a medianoche (hora del Pacífico).</span>' : ''}
-          <span class="src-detail">Respuesta del proxy: ${err}</span>
-        </div>
-      </div>`;
+      : 'Este equipo no tiene datos de respaldo en la planilla.';
+
+    return equipos.map(eq=>{
+      const st = CALENDLY_STATUS[eq];
+      if(!st) return '';
+
+      // Caso 1: el proxy respondió, pero con su última copia guardada (Calendly no contestó)
+      if(st.ok && st.stale){
+        const edad = st.edadMin==null ? '' :
+          st.edadMin < 60 ? ` (hace ${st.edadMin} min)` :
+          ` (hace ${Math.round(st.edadMin/60)} h)`;
+        return `<div class="src-banner warn">
+          <i class="ti ti-clock-exclamation"></i>
+          <div>
+            <b>${eq}: datos de la última sincronización${edad}, no en vivo.</b>
+            El proxy no pudo consultar Calendly ahora y está sirviendo su última copia buena.
+            ${st.aviso ? `<span class="src-detail">${st.aviso}</span>` : ''}
+          </div>
+        </div>`;
+      }
+
+      // Caso 2: el proxy no respondió → se muestra la planilla vieja (o nada)
+      if(!st.ok){
+        const err = st.error || 'error desconocido';
+        const cuota = /demasiadas veces|too many times|quota/i.test(err);
+        return `<div class="src-banner">
+          <i class="ti ti-plug-connected-x"></i>
+          <div>
+            <b>${eq}: sin datos en vivo de Calendly.</b> ${planilla} Lo que ves abajo NO refleja la agenda actual.
+            ${cuota ? '<span class="src-detail">Causa: el proxy de Apps Script agotó su cuota diaria de llamadas (urlfetch). La cuota es por cuenta de Google, compartida por todos tus proyectos, y se reinicia a medianoche (hora del Pacífico).</span>' : ''}
+            <span class="src-detail">Respuesta del proxy: ${err}</span>
+          </div>
+        </div>`;
+      }
+      return '';
     }).join('');
   }
 
