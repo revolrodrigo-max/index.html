@@ -261,7 +261,8 @@ function asegurarHeaders_(hoja) {
 
 /* ══════════════ WEB APP (JSON para el dashboard) ══════════════ */
 
-// Marca manual de dirección: {inviteeUri, campo: 'ASISTIO'|'REPORTADO', valor: 'SI'|''}
+// Marca manual de dirección: {inviteeUri, campo: 'ASISTIO'|'REPORTADO', valor: 'SI'|'NO'|''}
+// ASISTIO es tri-estado: 'SI' asistió, 'NO' no asistió, '' sin auditar todavía.
 function doPost(e) {
   const out = function (obj) {
     return ContentService.createTextOutput(JSON.stringify(obj))
@@ -271,7 +272,7 @@ function doPost(e) {
     const body = JSON.parse((e.postData && e.postData.contents) || '{}');
     const campo = body.campo;
     const uri = String(body.inviteeUri || '');
-    const valor = body.valor === 'SI' ? 'SI' : '';
+    const valor = (body.valor === 'SI' || body.valor === 'NO') ? body.valor : '';
     if (campo !== 'ASISTIO' && campo !== 'REPORTADO') return out({ ok: false, error: 'Campo inválido.' });
     if (!uri) return out({ ok: false, error: 'Falta inviteeUri.' });
 

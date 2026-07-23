@@ -488,6 +488,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 <div id="page-agendas" class="page">
   <div id="agendas-metricas"></div>
   <div id="agendas-dia"></div>
+  <div id="agendas-traza"></div>
   <div id="agendas-charts" style="display:none">
     <div class="chart-grid">
       <div class="chart-box">
@@ -732,7 +733,17 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">NO SHOW</td><td class="doc-desc">Enum</td><td class="doc-desc">SI si el profesional lo marcó como ausente en Calendly</td></tr>
         <tr><td class="doc-col">CREADO</td><td class="doc-desc">Fecha</td><td class="doc-desc">Cuándo el paciente hizo el agendamiento</td></tr>
         <tr><td class="doc-col">MOTIVO CANCELACIÓN</td><td class="doc-desc">Texto</td><td class="doc-desc">Motivo y quién canceló (si aplica)</td></tr>
-        <tr><td class="doc-col">ASISTIO / REPORTADO</td><td class="doc-desc">Enum</td><td class="doc-desc">Marcas manuales de dirección desde la Auditoría del día (SI | vacío): asistencia confirmada y sesión reportada al equipo. Se guardan en la planilla-registro vía el proxy y el sync horario las preserva</td></tr>
+        <tr><td class="doc-col">ASISTIO</td><td class="doc-desc">Enum</td><td class="doc-desc">Marca manual de dirección, tri-estado: <strong>SI</strong> asistió · <strong>NO</strong> no asistió · <strong>vacío</strong> sin auditar todavía. Un no-show de Calendly cuenta como inasistencia aunque nadie lo audite</td></tr>
+        <tr><td class="doc-col">REPORTADO</td><td class="doc-desc">Enum</td><td class="doc-desc">SI si la sesión fue reportada al equipo (marca manual). Ambas marcas se guardan en la planilla-registro vía el proxy y el sync horario las preserva</td></tr>
+      </table>
+      <table class="doc-table" style="margin-top:10px">
+        <tr><th>Métrica de auditoría</th><th>Fórmula</th></tr>
+        <tr><td class="doc-col">Sesiones auditables</td><td class="doc-desc">Agendas ya ocurridas y no canceladas (base de todas las métricas de auditoría)</td></tr>
+        <tr><td class="doc-col">Asistencias / Inasistencias</td><td class="doc-desc">ASISTIO = SI / (ASISTIO = NO o no-show de Calendly)</td></tr>
+        <tr><td class="doc-col">% de asistencia</td><td class="doc-desc">Asistencias ÷ (asistencias + inasistencias) × 100 — excluye las sin auditar para no ensuciar el dato</td></tr>
+        <tr><td class="doc-col">Sin auditar / % cobertura</td><td class="doc-desc">Auditables sin marca de asistencia / (auditables − sin auditar) ÷ auditables × 100</td></tr>
+        <tr><td class="doc-col">% reportado</td><td class="doc-desc">REPORTADO = SI ÷ auditables × 100</td></tr>
+        <tr><td class="doc-col">Traza diaria</td><td class="doc-desc">Las mismas métricas agrupadas por día (gráficos apilados de los últimos 30 días con sesiones + tabla de los 14 más recientes)</td></tr>
       </table>
     </div>
 
@@ -2052,6 +2063,40 @@ const ESTADO_META = {
 };
 function isoDia(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
+/* ── Auditoría: asistencia tri-estado y reporte ──
+   ASISTIO: 'SI' asistió · 'NO' no asistió · '' sin auditar todavía.
+   Un no-show marcado en Calendly cuenta como inasistencia aunque nadie lo audite. */
+function asistencia(r){
+  if(r.ASISTIO==='SI') return 'si';
+  if(r.ASISTIO==='NO') return 'no';
+  return (r['NO SHOW']||'')==='SI' ? 'no' : 'pend';
+}
+const ASIST_META = {
+  si:{lbl:'Asistió', cls:'bx-g', ico:'ti-user-check'},
+  no:{lbl:'No asistió', cls:'bx-r', ico:'ti-user-x'},
+  pend:{lbl:'¿Asistió?', cls:'bx-gr', ico:'ti-user-question'},
+};
+// Solo las sesiones que ya ocurrieron y no fueron canceladas son auditables
+function esAuditable(r){
+  if(r.ESTADO==='Cancelada') return false;
+  const dt = fechaHoraAgenda(r);
+  return !!(dt && dt<=new Date());
+}
+function statsAuditoria(rows){
+  const s = {auditables:0, asistio:0, noAsistio:0, sinAuditar:0, reportadas:0, sinReportar:0};
+  rows.forEach(r=>{
+    if(!esAuditable(r)) return;
+    s.auditables++;
+    const a = asistencia(r);
+    if(a==='si') s.asistio++; else if(a==='no') s.noAsistio++; else s.sinAuditar++;
+    if(r.REPORTADO==='SI') s.reportadas++; else s.sinReportar++;
+  });
+  s.pctAsist = (s.asistio+s.noAsistio) ? Math.round(s.asistio/(s.asistio+s.noAsistio)*100) : null;
+  s.pctRep = s.auditables ? Math.round(s.reportadas/s.auditables*100) : null;
+  s.pctAudit = s.auditables ? Math.round((s.auditables-s.sinAuditar)/s.auditables*100) : null;
+  return s;
+}
+
 async function fetchAgendas(){
   if(!CALENDLY_AGENDAS_URL) return null; // aún no configurado
   try{
@@ -2114,6 +2159,7 @@ function renderAgendas(rows){
   const pctCancel = rows.length ? Math.round(canceladas.length/rows.length*100) : 0;
   const semCnt = groupByWeek(rows,'FECHA').length;
   const promSem = semCnt ? Math.round(rows.length/semCnt*10)/10 : 0;
+  const aud = statsAuditoria(rows);
 
   met.innerHTML = `<div class="metrics">
     <div class="mc green"><div class="mc-label">Agendas</div><div class="mc-val g">${rows.length}</div><div class="mc-sub">Período filtrado · ~${promSem}/semana</div></div>
@@ -2125,9 +2171,18 @@ function renderAgendas(rows){
     <div class="mc red"><div class="mc-label">Canceladas</div><div class="mc-val r">${canceladas.length}</div><div class="mc-sub">${pctCancel}% del total</div></div>
     <div class="mc orange"><div class="mc-label">No-shows</div><div class="mc-val o">${noshows.length}</div><div class="mc-sub">${pctNoShow}% de las pasadas</div></div>
   </div>
+  <div class="sec-hdr" style="margin-bottom:10px"><i class="ti ti-clipboard-check" style="color:var(--green)"></i><span class="sec-title">Control de auditoría — asistencia y reporte</span><span class="sec-badge sb-gr">${aud.auditables} sesiones auditables</span></div>
+  <div class="metrics">
+    <div class="mc green"><div class="mc-label">Asistencias</div><div class="mc-val g">${aud.asistio}</div><div class="mc-sub">${aud.pctAsist===null?'Sin datos auditados':aud.pctAsist+'% de asistencia'}</div></div>
+    <div class="mc red"><div class="mc-label">Inasistencias</div><div class="mc-val r">${aud.noAsistio}</div><div class="mc-sub">Marcadas o no-show en Calendly</div></div>
+    <div class="mc amber"><div class="mc-label">Sin auditar</div><div class="mc-val a">${aud.sinAuditar}</div><div class="mc-sub">${aud.pctAudit===null?'—':aud.pctAudit+'% de cobertura'}</div></div>
+    <div class="mc blue"><div class="mc-label">Reportadas</div><div class="mc-val b">${aud.reportadas}</div><div class="mc-sub">${aud.pctRep===null?'—':aud.pctRep+'% reportado al equipo'}</div></div>
+    <div class="mc ${aud.sinReportar?'red':'green'}"><div class="mc-label">Sin reportar</div><div class="mc-val ${aud.sinReportar?'r':'g'}">${aud.sinReportar}</div><div class="mc-sub">Pendientes de reporte</div></div>
+  </div>
   <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin:-8px 0 16px">Último sync del registro: ${AGENDAS_META.updated||'—'} · Se actualiza solo cada hora · "Realizada" = pasó su horario sin cancelación ni no-show</div>`;
 
   renderAgendasDia();
+  renderTrazaAuditoria(rows);
 
   // ── Resumen por profesional ──
   const profMap = {};
@@ -2191,7 +2246,7 @@ function renderAgendas(rows){
 
   // ── Detalle con buscador + filtros por estado + export ──
   AGENDAS_VIEW = [...rows].sort((a,b)=>String(b.FECHA+' '+b.HORA).localeCompare(String(a.FECHA+' '+a.HORA)));
-  const PILLS = [['todas','Todas'],['programada','Programadas'],['realizada','Realizadas'],['cancelada','Canceladas'],['noshow','No-shows']];
+  const PILLS = [['todas','Todas'],['programada','Programadas'],['realizada','Realizadas'],['cancelada','Canceladas'],['noshow','No-shows'],['sinauditar','⚠ Sin auditar'],['sinreportar','⚠ Sin reportar']];
   det.innerHTML = `<div class="section">
     <div class="sec-hdr"><i class="ti ti-calendar-event" style="color:var(--blue)"></i><span class="sec-title">Detalle de agendamientos</span><span class="sec-badge sb-b" id="agCount">${AGENDAS_VIEW.length}</span>
       <button class="adh2-hist-btn" style="margin-left:10px" onclick="exportarAgendasCSV()" title="Descarga lo que está filtrado abajo"><i class="ti ti-download"></i> Exportar CSV</button></div>
@@ -2208,10 +2263,110 @@ function renderAgendas(rows){
   renderAgendasLista('');
 }
 
+// Re-renderiza todo lo que depende de las marcas (tras marcar Asistió/Reportado)
+function refrescarAuditoria(){
+  try{ renderAgendas(filterRows(RAW.agendas, 'FECHA')); }catch(e){ console.error(e); }
+}
+
+/* ── Traza diaria de auditoría: día a día, asistencias/inasistencias/reportes ── */
+function renderTrazaAuditoria(rows){
+  const cont = g('agendas-traza'); if(!cont) return;
+  // Agrupar por día solo las sesiones auditables (ya ocurridas y no canceladas)
+  const porDia = {};
+  rows.filter(esAuditable).forEach(r=>{
+    const k = r.FECHA; if(!k) return;
+    if(!porDia[k]) porDia[k] = {fecha:k, si:0, no:0, pend:0, rep:0, sinRep:0, total:0};
+    const d = porDia[k];
+    d.total++;
+    d[asistencia(r)]++;
+    if(r.REPORTADO==='SI') d.rep++; else d.sinRep++;
+  });
+  const dias = Object.values(porDia).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+
+  if(!dias.length){
+    cont.innerHTML = `<div class="section"><div class="sec-hdr"><i class="ti ti-chart-histogram" style="color:var(--purple)"></i><span class="sec-title">Traza diaria de auditoría</span></div>${emptyState('Sin sesiones auditables en el período seleccionado.')}</div>`;
+    return;
+  }
+
+  const ultimos = dias.slice(-30);        // gráficos: últimos 30 días con actividad
+  const tabla = [...dias].reverse().slice(0,14); // tabla: 14 días más recientes
+  const fmt = f => f.split('-').reverse().slice(0,2).join('/');
+
+  cont.innerHTML = `<div class="section">
+    <div class="sec-hdr"><i class="ti ti-chart-histogram" style="color:var(--purple)"></i><span class="sec-title">Traza diaria de auditoría</span><span class="sec-badge sb-gr">${dias.length} días con sesiones</span></div>
+    <div class="chart-grid">
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-user-check" style="color:var(--green)"></i> Asistencias vs inasistencias por día</div>
+        <div class="chart-wrap"><canvas id="chartAudAsist"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-box-title"><i class="ti ti-speakerphone" style="color:var(--blue)"></i> Reportadas vs sin reportar por día</div>
+        <div class="chart-wrap"><canvas id="chartAudRep"></canvas></div>
+      </div>
+    </div>
+    <div class="ct-table">
+      <div class="ct-row" style="background:var(--s2)">
+        <div class="ct-info"><div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Día</div></div>
+        ${['Sesiones','Asistió','No asistió','Sin auditar','Reportadas','% asist.'].map(h=>
+          `<span style="width:72px;text-align:center;font-size:9px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${h}</span>`).join('')}
+      </div>
+      ${tabla.map(d=>{
+        const conDato = d.si+d.no;
+        const pa = conDato ? Math.round(d.si/conDato*100) : null;
+        const fecha = parseDate(d.fecha);
+        const lbl = fecha ? fecha.toLocaleDateString('es-AR',{weekday:'short',day:'2-digit',month:'2-digit'}) : d.fecha;
+        const cell = (v,cls) => `<span style="width:72px;text-align:center"><span class="badge ${cls}">${v}</span></span>`;
+        return `<div class="ct-row" style="cursor:pointer" title="Ver este día en la auditoría" onclick="setDiaAgendas('${d.fecha}'); g('agendas-dia').scrollIntoView({behavior:'smooth',block:'start'});">
+          <div class="ct-info"><div class="ct-name" style="text-transform:capitalize">${lbl}</div></div>
+          ${cell(d.total,'bx-gr')}
+          ${cell(d.si, d.si?'bx-g':'bx-gr')}
+          ${cell(d.no, d.no?'bx-r':'bx-gr')}
+          ${cell(d.pend, d.pend?'bx-a':'bx-gr')}
+          ${cell(d.rep+'/'+d.total, d.sinRep?'bx-o':'bx-b')}
+          ${cell(pa===null?'—':pa+'%', pa===null?'bx-gr':pa>=90?'bx-g':pa>=70?'bx-a':'bx-r')}
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:8px">Solo sesiones ya ocurridas y no canceladas. Clic en un día para auditarlo arriba.${dias.length>14?' · Tabla: 14 días más recientes · Gráficos: últimos 30 · Ampliá el período para ver más.':''}</div>
+  </div>`;
+
+  const optsStack = JSON.parse(JSON.stringify(CHART_DEFAULTS));
+  optsStack.scales = optsStack.scales || {};
+  optsStack.scales.x = Object.assign({}, optsStack.scales.x||{}, {stacked:true});
+  optsStack.scales.y = Object.assign({}, optsStack.scales.y||{}, {stacked:true});
+  optsStack.plugins.legend = {display:true, position:'bottom', labels:{color:'#9CA3AF', font:{family:'Inter',size:11}, padding:12, boxWidth:12}};
+
+  destroyChart('audAsist');
+  const c1 = g('chartAudAsist');
+  if(c1) CHARTS.audAsist = new Chart(c1,{
+    type:'bar',
+    data:{ labels: ultimos.map(d=>fmt(d.fecha)), datasets:[
+      {label:'Asistió', data:ultimos.map(d=>d.si), backgroundColor:'rgba(199,255,0,.75)', borderRadius:3},
+      {label:'No asistió', data:ultimos.map(d=>d.no), backgroundColor:'rgba(255,68,68,.75)', borderRadius:3},
+      {label:'Sin auditar', data:ultimos.map(d=>d.pend), backgroundColor:'rgba(107,105,105,.5)', borderRadius:3},
+    ]},
+    options: optsStack
+  });
+
+  destroyChart('audRep');
+  const c2 = g('chartAudRep');
+  if(c2) CHARTS.audRep = new Chart(c2,{
+    type:'bar',
+    data:{ labels: ultimos.map(d=>fmt(d.fecha)), datasets:[
+      {label:'Reportadas', data:ultimos.map(d=>d.rep), backgroundColor:'rgba(0,212,255,.75)', borderRadius:3},
+      {label:'Sin reportar', data:ultimos.map(d=>d.sinRep), backgroundColor:'rgba(255,122,0,.7)', borderRadius:3},
+    ]},
+    options: JSON.parse(JSON.stringify(optsStack))
+  });
+}
+
 function filtrarAgendas(query){
   const q = (query||'').toLowerCase().trim();
   return AGENDAS_VIEW.filter(r=>{
-    if(AGENDAS_FILTRO!=='todas' && estadoAgenda(r)!==AGENDAS_FILTRO) return false;
+    const f = AGENDAS_FILTRO;
+    if(f==='sinauditar'){ if(!esAuditable(r) || asistencia(r)!=='pend') return false; }
+    else if(f==='sinreportar'){ if(!esAuditable(r) || r.REPORTADO==='SI') return false; }
+    else if(f!=='todas' && estadoAgenda(r)!==f) return false;
     if(q && ![r.PACIENTE,r.PROFESIONAL,r.EVENTO,r.EMAIL,r.CUENTA].some(v=>(v||'').toLowerCase().includes(q))) return false;
     return true;
   });
@@ -2238,8 +2393,8 @@ function renderAgendasLista(query){
         <div class="ct-meta">${r.PROFESIONAL||'Sin profesional'} · ${r.EVENTO||''} · ${r.CUENTA||''}</div></div>
       <span class="badge bx-gr">${fecha} ${r.HORA||''}</span>
       <span class="badge ${m.cls}">${m.lbl}</span>
-      ${r.ASISTIO==='SI'?'<span class="badge bx-g" title="Asistencia confirmada por dirección"><i class="ti ti-user-check" style="font-size:10px"></i>✓</span>':''}
-      ${r.REPORTADO==='SI'?'<span class="badge bx-b" title="Reportado al equipo"><i class="ti ti-speakerphone" style="font-size:10px"></i>✓</span>':''}
+      ${esAuditable(r)?(()=>{const a=asistencia(r);return `<span class="badge ${ASIST_META[a].cls}" title="Auditoría de asistencia"><i class="ti ${ASIST_META[a].ico}" style="font-size:10px"></i>${a==='si'?'Asistió':a==='no'?'No asistió':'Sin auditar'}</span>`;})():''}
+      ${esAuditable(r)?`<span class="badge ${r.REPORTADO==='SI'?'bx-b':'bx-o'}" title="Reporte al equipo"><i class="ti ti-speakerphone" style="font-size:10px"></i>${r.REPORTADO==='SI'?'Reportado':'Sin reportar'}</span>`:''}
     </div>`;
   }).join('')}</div>${filtradas.length>CAP?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:8px">Mostrando ${CAP} de ${filtradas.length} — refiná la búsqueda, el filtro de estado o el período. El export CSV incluye todo.</div>`:''}`
   : emptyState('Sin agendamientos que coincidan.');
@@ -2250,7 +2405,12 @@ function exportarAgendasCSV(){
   const cols = ['CUENTA','PROFESIONAL','ROL','EVENTO','PACIENTE','EMAIL','FECHA','HORA','ESTADO','ASISTIO','REPORTADO','CREADO','MOTIVO CANCELACIÓN'];
   const esc = v => { v = String(v==null?'':v); return /[";\n,]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
   const csv = '﻿' + cols.join(';') + '\n' +
-    rows.map(r=>cols.map(c=>esc(c==='ESTADO' ? ESTADO_META[estadoAgenda(r)].lbl : r[c])).join(';')).join('\n');
+    rows.map(r=>cols.map(c=>{
+      if(c==='ESTADO') return esc(ESTADO_META[estadoAgenda(r)].lbl);
+      if(c==='ASISTIO') return esc(esAuditable(r) ? ASIST_META[asistencia(r)].lbl.replace('¿Asistió?','Sin auditar') : '');
+      if(c==='REPORTADO') return esc(esAuditable(r) ? (r.REPORTADO==='SI'?'Reportado':'Sin reportar') : '');
+      return esc(r[c]);
+    }).join(';')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download = 'agendas_'+new Date().toISOString().slice(0,10)+'.csv';
@@ -2268,8 +2428,7 @@ function renderAgendasDia(){
 
   const cnt = {realizada:0, programada:0, cancelada:0, noshow:0};
   delDia.forEach(r=>cnt[estadoAgenda(r)]++);
-  const asistidas = delDia.filter(r=>r.ASISTIO==='SI').length;
-  const sinReportar = delDia.filter(r=>{const e=estadoAgenda(r); return (e==='realizada'||e==='noshow') && r.REPORTADO!=='SI';}).length;
+  const audDia = statsAuditoria(delDia);
 
   // Todos los profesionales conocidos, aunque no tengan agendas ese día (auditar días vacíos)
   const profs = {};
@@ -2294,8 +2453,10 @@ function renderAgendasDia(){
         <span class="badge bx-b">${cnt.programada} programadas</span>
         <span class="badge bx-r">${cnt.cancelada} canceladas</span>
         <span class="badge bx-o">${cnt.noshow} no-show</span>
-        <span class="badge bx-g">${asistidas} asistencias ✓</span>
-        <span class="badge ${sinReportar?'bx-r':'bx-gr'}">${sinReportar} sin reportar</span>
+        <span class="badge bx-g">${audDia.asistio} asistió</span>
+        <span class="badge ${audDia.noAsistio?'bx-r':'bx-gr'}">${audDia.noAsistio} no asistió</span>
+        <span class="badge ${audDia.sinAuditar?'bx-a':'bx-gr'}">${audDia.sinAuditar} sin auditar</span>
+        <span class="badge ${audDia.sinReportar?'bx-o':'bx-b'}">${audDia.reportadas}/${audDia.auditables} reportadas</span>
       </span>
     </div>
     <div class="disp-grid" style="margin-top:12px">${lista.map(p=>{
@@ -2315,7 +2476,8 @@ function renderAgendasDia(){
             <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);flex-shrink:0">${r.HORA||'—'}</span>
             <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.PACIENTE||'—'}</span>
             <span class="badge ${m.cls}" style="flex-shrink:0">${m.lbl}</span>
-            ${e!=='cancelada'?`<button class="adh2-status-btn${r.ASISTIO==='SI'?' done':''}" style="margin-left:0" onclick="toggleMarcaAgenda('${r.INVITEE_URI}','ASISTIO',this)" title="Confirmar que el paciente asistió a la sesión"><i class="ti ti-user-check"></i>${r.ASISTIO==='SI'?'Asistió':'¿Asistió?'}</button>`:''}
+            ${e!=='cancelada'?(()=>{ const a=asistencia(r), am=ASIST_META[a];
+              return `<button class="adh2-status-btn${a==='si'?' done':''}" style="margin-left:0${a==='no'?';background:var(--rbg);border-color:var(--rborder);color:var(--red)':''}" onclick="ciclarAsistencia('${r.INVITEE_URI}',this)" title="Clic para ciclar: sin auditar → asistió → no asistió"><i class="ti ${am.ico}"></i>${am.lbl}</button>`;})():''}
             <button class="adh2-status-btn${r.REPORTADO==='SI'?' done':''}" style="margin-left:0" onclick="toggleMarcaAgenda('${r.INVITEE_URI}','REPORTADO',this)" title="Marcar que la sesión fue reportada al equipo"><i class="ti ti-speakerphone"></i>${r.REPORTADO==='SI'?'Reportado':'Reportar'}</button>
           </div>`;
         }).join('')}</div>`
@@ -2335,16 +2497,26 @@ function setDiaAgendas(v){
   renderAgendasDia();
 }
 
-// Marca de dirección (Asistió / Reportado): actualiza la UI al instante y
-// persiste en la planilla-registro vía doPost del proxy. Si falla, revierte.
-async function toggleMarcaAgenda(uri, campo, btn){
+// Asistencia tri-estado: sin auditar → asistió → no asistió → sin auditar
+function ciclarAsistencia(uri, btn){
+  const row = RAW.agendas.find(r=>r.INVITEE_URI===uri); if(!row) return;
+  const sig = {'':'SI', 'SI':'NO', 'NO':''}[row.ASISTIO||''];
+  guardarMarcaAgenda(uri, 'ASISTIO', sig, btn);
+}
+function toggleMarcaAgenda(uri, campo, btn){
+  const row = RAW.agendas.find(r=>r.INVITEE_URI===uri); if(!row) return;
+  guardarMarcaAgenda(uri, campo, (row[campo]||'')==='SI' ? '' : 'SI', btn);
+}
+
+// Marca de dirección: actualiza la UI al instante y persiste en la
+// planilla-registro vía doPost del proxy. Si falla, revierte.
+async function guardarMarcaAgenda(uri, campo, nuevo, btn){
   const row = RAW.agendas.find(r=>r.INVITEE_URI===uri);
   if(!row || !CALENDLY_AGENDAS_URL) return;
   const previo = row[campo]||'';
-  const nuevo = previo==='SI' ? '' : 'SI';
   row[campo] = nuevo;
   if(btn) btn.disabled = true;
-  renderAgendasDia();
+  refrescarAuditoria();
   try{
     const r = await fetch(CALENDLY_AGENDAS_URL, { method:'POST', body: JSON.stringify({inviteeUri:uri, campo:campo, valor:nuevo}) });
     if(!r.ok) throw new Error('HTTP '+r.status);
@@ -2352,7 +2524,7 @@ async function toggleMarcaAgenda(uri, campo, btn){
     if(!data.ok) throw new Error(data.error||'Proxy error');
   }catch(e){
     row[campo] = previo;
-    renderAgendasDia();
+    refrescarAuditoria();
     alert('No se pudo guardar la marca "'+campo+'": '+e.message+'\n\nSi acabás de agregar esta función, asegurate de haber actualizado el código del proxy en Apps Script y creado una NUEVA VERSIÓN de la implementación.');
   }
 }
