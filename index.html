@@ -2476,9 +2476,10 @@ function renderAgendasDia(){
             <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);flex-shrink:0">${r.HORA||'—'}</span>
             <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.PACIENTE||'—'}</span>
             <span class="badge ${m.cls}" style="flex-shrink:0">${m.lbl}</span>
-            ${e!=='cancelada'?(()=>{ const a=asistencia(r), am=ASIST_META[a];
-              return `<button class="adh2-status-btn${a==='si'?' done':''}" style="margin-left:0${a==='no'?';background:var(--rbg);border-color:var(--rborder);color:var(--red)':''}" onclick="ciclarAsistencia('${r.INVITEE_URI}',this)" title="Clic para ciclar: sin auditar → asistió → no asistió"><i class="ti ${am.ico}"></i>${am.lbl}</button>`;})():''}
-            <button class="adh2-status-btn${r.REPORTADO==='SI'?' done':''}" style="margin-left:0" onclick="toggleMarcaAgenda('${r.INVITEE_URI}','REPORTADO',this)" title="Marcar que la sesión fue reportada al equipo"><i class="ti ti-speakerphone"></i>${r.REPORTADO==='SI'?'Reportado':'Reportar'}</button>
+            ${esAuditable(r)?(()=>{ const a=asistencia(r), am=ASIST_META[a];
+              return `<button class="adh2-status-btn${a==='si'?' done':''}" style="margin-left:0${a==='no'?';background:var(--rbg);border-color:var(--rborder);color:var(--red)':''}" onclick="ciclarAsistencia('${r.INVITEE_URI}',this)" title="Clic para ciclar: sin auditar → asistió → no asistió"><i class="ti ${am.ico}"></i>${am.lbl}</button>
+            <button class="adh2-status-btn${r.REPORTADO==='SI'?' done':''}" style="margin-left:0" onclick="toggleMarcaAgenda('${r.INVITEE_URI}','REPORTADO',this)" title="Marcar que la sesión fue reportada al equipo"><i class="ti ti-speakerphone"></i>${r.REPORTADO==='SI'?'Reportado':'Reportar'}</button>`;})()
+            : `<span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;flex-shrink:0">${r.ESTADO==='Cancelada'?'—':'aún no ocurrió'}</span>`}
           </div>`;
         }).join('')}</div>`
         : `<div style="font-size:11px;color:var(--muted);font-style:italic;padding:2px 0">Sin agendas este día</div>`}
