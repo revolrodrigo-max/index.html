@@ -122,6 +122,10 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .disp-alert-banner{display:flex;align-items:center;gap:7px;background:var(--abg);border:1px solid var(--aborder);border-radius:var(--r);padding:5px 9px;margin-bottom:8px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace}
 .disp-alert-banner.crit{background:var(--rbg);border-color:var(--rborder);color:var(--red)}
 .disp-alert-banner i{font-size:13px;flex-shrink:0}
+.src-banner{display:flex;align-items:flex-start;gap:9px;background:var(--rbg);border:1px solid var(--rborder);border-radius:var(--r2);padding:10px 13px;margin-bottom:14px;font-size:11px;color:var(--text);line-height:1.5}
+.src-banner i{font-size:15px;flex-shrink:0;color:var(--red);margin-top:1px}
+.src-banner b{color:var(--red)}
+.src-banner .src-detail{color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;display:block;margin-top:3px}
 .prof-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r2);padding:13px 15px;transition:border-color .2s,box-shadow .2s}
 .prof-card:hover{border-color:var(--gborder);box-shadow:var(--glow-sm)}
 .prof-top{display:flex;align-items:center;gap:9px;margin-bottom:10px}
@@ -847,7 +851,9 @@ const URLS = {
 let RAW = { eq1:[], eq2:[], eq3:[], disp:[], adh:[], pausas:[], agendas:[] };
 let FILTER = { from: null, to: null, mode: 'todo' };
 let CHARTS = {};
-let CALENDLY_STATUS = 'idle'; // 'idle' | 'ok' | 'error'
+// Estado de cada proxy de disponibilidad. Se muestra en la pestaña Disponibilidad:
+// si un equipo falla, hay que decirlo — antes se caía en silencio a la planilla vieja.
+let CALENDLY_STATUS = { 'Equipo 2': {ok:false, error:'sin cargar'}, 'Equipo 3': {ok:false, error:'sin cargar'} };
 
 /* ═══════════════════════════════════════
    CALENDLY (vía proxy Apps Script — el token vive del lado del servidor)
@@ -865,20 +871,31 @@ async function loadCalendlyProxy(url){
   return (data.rows||[]).map(row=>({...row, _calendly:true}));
 }
 
-async function loadCalendlyData(){
+// Carga cada equipo por separado y registra su estado. Devuelve las filas del
+// equipo junto al resultado para poder decidir, equipo por equipo, si se usa
+// Calendly o se cae a la planilla.
+async function loadCalendlyTeam(equipo, url){
   try{
-    const [eq2, eq3] = await Promise.all([
-      loadCalendlyProxy(CALENDLY_PROXY_URL).catch(e=>{ console.warn('Calendly EQ2 error:', e.message); return []; }),
-      loadCalendlyProxy(CALENDLY_PROXY_URL_EQ3).catch(e=>{ console.warn('Calendly EQ3 error:', e.message); return []; }),
-    ]);
-    const rows = [...eq2, ...eq3];
-    CALENDLY_STATUS = rows.length ? 'ok' : 'error';
-    return rows.length ? rows : null;
+    const rows = await loadCalendlyProxy(url);
+    if(!rows.length){
+      CALENDLY_STATUS[equipo] = {ok:false, error:'el proxy respondió sin profesionales'};
+      return [];
+    }
+    CALENDLY_STATUS[equipo] = {ok:true, error:null};
+    return rows;
   }catch(e){
-    console.warn('Calendly proxy error:', e.message);
-    CALENDLY_STATUS = 'error';
-    return null;
+    console.warn('Calendly '+equipo+' error:', e.message);
+    CALENDLY_STATUS[equipo] = {ok:false, error:e.message};
+    return [];
   }
+}
+
+async function loadCalendlyData(){
+  const [eq2, eq3] = await Promise.all([
+    loadCalendlyTeam('Equipo 2', CALENDLY_PROXY_URL),
+    loadCalendlyTeam('Equipo 3', CALENDLY_PROXY_URL_EQ3),
+  ]);
+  return [...eq2, ...eq3];
 }
 
 /* ═══════════════════════════════════════
@@ -1467,12 +1484,44 @@ function renderDisp(data){
     </div>`;
   }
 
-  function dispBlock(profList, label){
+  // Última sincronización de la planilla (fallback), para dimensionar cuán vieja es
+  const ultimaSyncPlanilla = (()=>{
+    const fechas = data.filter(r=>!r._calendly).map(r=>parseDate((r['ULTIMA SYNC']||'').split(' ')[0])).filter(Boolean);
+    if(!fechas.length) return null;
+    const max = new Date(Math.max.apply(null, fechas));
+    const dias = Math.round((new Date().setHours(0,0,0,0) - max.setHours(0,0,0,0))/86400000);
+    return {fecha: max.toLocaleDateString('es-AR'), dias};
+  })();
+
+  // Aviso cuando un equipo no pudo traer datos en vivo de Calendly.
+  // scope: 'all' | 'Equipo 1' | 'Equipo 2' | 'Equipo 3'
+  function calendlyBanner(scope){
+    const equipos = scope === 'all' ? ['Equipo 2','Equipo 3'] : [scope];
+    const caidos = equipos.filter(eq=>CALENDLY_STATUS[eq] && !CALENDLY_STATUS[eq].ok);
+    if(!caidos.length) return '';
+    const stale = ultimaSyncPlanilla
+      ? `La planilla de respaldo se sincronizó por última vez el ${ultimaSyncPlanilla.fecha} (hace ${ultimaSyncPlanilla.dias} días).`
+      : 'No hay datos de respaldo en la planilla.';
+    return caidos.map(eq=>{
+      const err = CALENDLY_STATUS[eq].error || 'error desconocido';
+      const cuota = /demasiadas veces|too many times|quota/i.test(err);
+      return `<div class="src-banner">
+        <i class="ti ti-plug-connected-x"></i>
+        <div>
+          <b>${eq}: sin datos en vivo de Calendly.</b> ${stale} Lo que ves abajo NO refleja la agenda actual.
+          ${cuota ? '<span class="src-detail">Causa: el proxy de Apps Script agotó su cuota diaria de llamadas (urlfetch). La cuota es por cuenta de Google y se reinicia a medianoche (hora del Pacífico).</span>' : ''}
+          <span class="src-detail">Respuesta del proxy: ${err}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function dispBlock(profList, label, scope){
     const profs=[...profList].sort((a,b)=>weekData(b).pct-weekData(a).pct);
     let totLib=0, totAg=0, sat=0, alertas=0;
     profs.forEach(p=>{const w=weekData(p);totLib+=w.totalLib;totAg+=w.totalAg;if(w.pct>=99)sat++;if(w.totalLib<=3)alertas++;});
     const promPct=profs.length?Math.round(profs.reduce((s,p)=>s+weekData(p).pct,0)/profs.length):0;
-    return `<div class="metrics">
+    return `${calendlyBanner(scope)}<div class="metrics">
       <div class="mc blue"><div class="mc-label">Slots libres (15 días)</div><div class="mc-val b">${totLib}</div><div class="mc-sub">${label}</div></div>
       <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g">${totAg}</div><div class="mc-sub">Próximos 15 días</div></div>
       ${alertas>0?`<div class="mc amber"><div class="mc-label">⚠ Baja disponibilidad</div><div class="mc-val a">${alertas}</div><div class="mc-sub">≤ 3 slots libres</div></div>`:''}
@@ -1485,7 +1534,11 @@ function renderDisp(data){
         <span class="sec-title">Disponibilidad próximos 15 días</span>
         <span class="sec-badge sb-b">${profs.length} profesionales</span>
       </div>
-      <div class="disp-grid">${profs.length?profs.map(profCard).join(''):emptyState('Sin datos de disponibilidad para los próximos 15 días.')}</div>
+      <div class="disp-grid">${profs.length?profs.map(profCard).join(''):emptyState(
+        (scope!=='all' && CALENDLY_STATUS[scope] && !CALENDLY_STATUS[scope].ok)
+          ? `Sin datos: el proxy de Calendly de ${scope} no respondió y este equipo no tiene profesionales cargados en la planilla de respaldo.`
+          : 'Sin datos de disponibilidad para los próximos 15 días.'
+      )}</div>
     </div>`;
   }
 
@@ -1494,10 +1547,10 @@ function renderDisp(data){
   const eq2=profs.filter(p=>p.equipo.includes('2'));
   const eq3=profs.filter(p=>p.equipo.includes('3'));
 
-  g('disponibilidad-all').innerHTML=dispBlock(profs,'Todos los equipos');
-  g('disponibilidad-eq1').innerHTML=dispBlock(eq1,'Equipo 1');
-  g('disponibilidad-eq2').innerHTML=dispBlock(eq2,'Equipo 2');
-  g('disponibilidad-eq3').innerHTML=dispBlock(eq3,'Equipo 3');
+  g('disponibilidad-all').innerHTML=dispBlock(profs,'Todos los equipos','all');
+  g('disponibilidad-eq1').innerHTML=dispBlock(eq1,'Equipo 1','Equipo 1');
+  g('disponibilidad-eq2').innerHTML=dispBlock(eq2,'Equipo 2','Equipo 2');
+  g('disponibilidad-eq3').innerHTML=dispBlock(eq3,'Equipo 3','Equipo 3');
 }
 
 /* ═══════════════════════════════════════
@@ -2973,13 +3026,17 @@ async function loadAll(){
   RAW.eq1 = dEq1; RAW.eq2 = dEq2; RAW.eq3 = dEq3; RAW.adh = dAdh; RAW.pausas = dPausas;
   RAW.agendas = dAgendas || [];
 
-  // Disponibilidad: Calendly (EQ2 y EQ3 en tiempo real) + Sheets (resto)
-  if(dCalendly && dCalendly.length){
-    const sheetsNonCalendly = dDisp.filter(r=>!(r.EQUIPO||'').includes('2') && !(r.EQUIPO||'').includes('3'));
-    RAW.disp = [...sheetsNonCalendly, ...dCalendly];
-  } else {
-    RAW.disp = dDisp;
-  }
+  // Disponibilidad: Calendly en vivo por equipo + planilla para el resto.
+  // Solo se descartan las filas de planilla del equipo cuyo proxy respondió OK;
+  // si un proxy falla, se conserva su fila de planilla (vieja, pero es lo que hay)
+  // y la pestaña avisa que está en fallback.
+  const sheetsFallback = dDisp.filter(r=>{
+    const eq = r.EQUIPO||'';
+    if(eq.includes('2') && CALENDLY_STATUS['Equipo 2'].ok) return false;
+    if(eq.includes('3') && CALENDLY_STATUS['Equipo 3'].ok) return false;
+    return true;
+  });
+  RAW.disp = [...sheetsFallback, ...(dCalendly||[])];
   // Normalizar columnas (nuevas planillas usan INGRESO/SALIDA/DURACIÓN en lugar de INICIO/FIN/DURACION)
   normalizeEqRows(RAW.eq1); normalizeEqRows(RAW.eq2); normalizeEqRows(RAW.eq3);
   // Calcular FIN = INICIO + DURACION cuando falta
@@ -2994,7 +3051,14 @@ async function loadAll(){
   try{ renderPrograma(allEq); }catch(e){ console.error('Programa error',e); errores++; }
   try{ renderCierres(allEq); }catch(e){ console.error('Cierres error',e); errores++; }
   if(RAW.disp.length){ try{ renderDisp(RAW.disp); }catch(e){ console.error('Disp error',e); errores++; } }
-  else { ['disponibilidad-all','disponibilidad-eq1','disponibilidad-eq2','disponibilidad-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar DISPONIBILIDAD.'); }); errores++; }
+  else {
+    const detalle = ['Equipo 2','Equipo 3']
+      .filter(eq=>!CALENDLY_STATUS[eq].ok)
+      .map(eq=>`${eq}: ${CALENDLY_STATUS[eq].error}`).join(' · ');
+    const msg = 'No se pudo cargar DISPONIBILIDAD (ni Calendly ni la planilla).' + (detalle ? ' ' + detalle : '');
+    ['disponibilidad-all','disponibilidad-eq1','disponibilidad-eq2','disponibilidad-eq3'].forEach(id=>{ g(id).innerHTML = emptyState(msg); });
+    errores++;
+  }
   if(dAdh.length){ try{ renderAdh(dAdh); }catch(e){ console.error('Adh error',e); errores++; } }
   else { ['adherencia-all','adherencia-eq1','adherencia-eq2','adherencia-eq3'].forEach(id=>{ g(id).innerHTML = emptyState('No se pudo cargar ADHERENCIA.'); }); errores++; }
   if(dPausas.length){ try{ renderPausas(dPausas); }catch(e){ console.error('Pausas error',e); errores++; } }
