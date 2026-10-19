@@ -741,6 +741,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">MOTIVO CANCELACIÓN</td><td class="doc-desc">Texto</td><td class="doc-desc">Motivo y quién canceló (si aplica)</td></tr>
         <tr><td class="doc-col">ASISTIO</td><td class="doc-desc">Enum</td><td class="doc-desc">Marca manual de dirección, tri-estado: <strong>SI</strong> asistió · <strong>NO</strong> no asistió · <strong>vacío</strong> sin auditar todavía. Un no-show de Calendly cuenta como inasistencia aunque nadie lo audite</td></tr>
         <tr><td class="doc-col">REPORTADO</td><td class="doc-desc">Enum</td><td class="doc-desc">SI si la sesión fue reportada al equipo (marca manual). Ambas marcas se guardan en la planilla-registro vía el proxy y el sync horario las preserva</td></tr>
+        <tr><td class="doc-col">TIPO</td><td class="doc-desc">Enum</td><td class="doc-desc">Sesión | Control. Control = evento de control de 30 min de nutricionistas y entrenadores (se detecta por el tipo de evento de Calendly). Las filas viejas sin TIPO se clasifican por el nombre del evento</td></tr>
       </table>
       <table class="doc-table" style="margin-top:10px">
         <tr><th>Métrica de auditoría</th><th>Fórmula</th></tr>
@@ -779,7 +780,9 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
         <tr><td class="doc-col">ROL</td><td class="doc-desc">Enum</td><td class="doc-desc">COACH | NUTRICIONISTA | MÉDICO | ENTRENADOR</td></tr>
         <tr><td class="doc-col">EQUIPO</td><td class="doc-desc">Enum</td><td class="doc-desc">Equipo asignado</td></tr>
         <tr><td class="doc-col">AGENDADAS</td><td class="doc-desc">Num</td><td class="doc-desc">Sesiones agendadas en período</td></tr>
-        <tr><td class="doc-col">LIBRES</td><td class="doc-desc">Num</td><td class="doc-desc">Slots libres disponibles</td></tr>
+        <tr><td class="doc-col">LIBRES</td><td class="doc-desc">Num</td><td class="doc-desc">Slots libres disponibles (horarios distintos: si el mismo horario sirve para sesión y para control cuenta una sola vez)</td></tr>
+        <tr><td class="doc-col">AGENDADAS_SESION / AGENDADAS_CONTROL</td><td class="doc-desc">Num</td><td class="doc-desc">Agendadas separadas por tipo de evento (solo Calendly en vivo)</td></tr>
+        <tr><td class="doc-col">LIBRES_SESION / LIBRES_CONTROL</td><td class="doc-desc">Num</td><td class="doc-desc">Horarios libres de cada tipo de evento. Pueden solaparse entre sí, por eso su suma puede superar a LIBRES</td></tr>
         <tr><td class="doc-col">CAP. MÁX</td><td class="doc-desc">Num</td><td class="doc-desc">Capacidad máxima semanal</td></tr>
         <tr><td class="doc-col">OCUP. %</td><td class="doc-desc">%</td><td class="doc-desc">Porcentaje de ocupación</td></tr>
       </table>
@@ -1418,7 +1421,7 @@ function renderDisp(data){
   // Calcular resumen de los próximos 15 días de un profesional (memoizado inline)
   function weekData(prof){
     const dayMap={};
-    let totalAg=0, totalLib=0, totalCap=0;
+    let totalAg=0, totalLib=0, totalCap=0, agS=0, agC=0, libS=0, libC=0, tieneControl=false;
     prof.rows.forEach(r=>{
       const d=parseDate(r.FECHA); if(!d||d<rangeStart||d>rangeEnd) return;
       const key=dateKey(d);
@@ -1429,13 +1432,17 @@ function renderDisp(data){
       if(!dayMap[key]) dayMap[key]={ag:0,lib:0,cap:0};
       dayMap[key].ag+=ag; dayMap[key].lib+=lib; dayMap[key].cap+=cap;
       totalAg+=ag; totalLib+=lib; totalCap+=cap;
+      // Desglose sesión / control (solo viene del proxy de Calendly en vivo)
+      agS+=parseInt(r.AGENDADAS_SESION||0)||0; agC+=parseInt(r.AGENDADAS_CONTROL||0)||0;
+      libS+=parseInt(r.LIBRES_SESION||0)||0; libC+=parseInt(r.LIBRES_CONTROL||0)||0;
+      if(String(r.TIENE_CONTROL||'')==='1') tieneControl=true;
     });
     const pct=totalCap>0?Math.round(totalAg/totalCap*100):0;
-    return {dayMap,totalAg,totalLib,totalCap,pct};
+    return {dayMap,totalAg,totalLib,totalCap,pct,agS,agC,libS,libC,tieneControl};
   }
 
   function profCard(prof){
-    const {dayMap,totalAg,totalLib,totalCap,pct}=weekData(prof);
+    const {dayMap,totalAg,totalLib,totalCap,pct,agS,agC,libS,libC,tieneControl}=weekData(prof);
     const av=pct>=90?'av-r':pct>=65?'av-a':'av-g';
     const bx=pct>=90?'bx-r':pct>=65?'bx-a':'bx-g';
     const bl=pct>=99?'Saturado':pct>=90?'Alta carga':pct>=65?'Media':pct>=20?'Disponible':'Muy libre';
@@ -1489,6 +1496,10 @@ function renderDisp(data){
         <span style="color:${isCrit?'var(--red)':isWarn?'var(--amber)':'var(--green)'}"><i class="ti ti-circle-plus" style="font-size:11px;vertical-align:middle"></i> ${totalLib} libres</span>
         ${totalCap>0?`<span style="color:var(--muted)">Cap. ${totalCap} · ${pct}% ocupación</span>`:''}
       </div>
+      ${tieneControl?`<div class="disp-foot" style="margin-top:4px">
+        <span style="color:var(--blue)" title="Evento de sesión"><b>Sesión:</b> ${agS} agend. · ${libS} libres</span>
+        <span style="color:var(--purple)" title="Evento de control (30 min)"><b>Control:</b> ${agC} agend. · ${libC} libres</span>
+      </div>`:''}
     </div>`;
   }
 
@@ -1547,12 +1558,14 @@ function renderDisp(data){
 
   function dispBlock(profList, label, scope){
     const profs=[...profList].sort((a,b)=>weekData(b).pct-weekData(a).pct);
-    let totLib=0, totAg=0, sat=0, alertas=0;
-    profs.forEach(p=>{const w=weekData(p);totLib+=w.totalLib;totAg+=w.totalAg;if(w.pct>=99)sat++;if(w.totalLib<=3)alertas++;});
+    let totLib=0, totAg=0, sat=0, alertas=0, tLibS=0, tLibC=0, tAgS=0, tAgC=0, hayControl=false;
+    profs.forEach(p=>{const w=weekData(p);totLib+=w.totalLib;totAg+=w.totalAg;if(w.pct>=99)sat++;if(w.totalLib<=3)alertas++;
+      tLibS+=w.libS; tLibC+=w.libC; tAgS+=w.agS; tAgC+=w.agC; if(w.tieneControl) hayControl=true;});
     const promPct=profs.length?Math.round(profs.reduce((s,p)=>s+weekData(p).pct,0)/profs.length):0;
     return `${calendlyBanner(scope)}<div class="metrics">
       <div class="mc blue"><div class="mc-label">Slots libres (15 días)</div><div class="mc-val b">${totLib}</div><div class="mc-sub">${label}</div></div>
       <div class="mc green"><div class="mc-label">Sesiones agendadas</div><div class="mc-val g">${totAg}</div><div class="mc-sub">Próximos 15 días</div></div>
+      ${hayControl?`<div class="mc purple"><div class="mc-label">Sesión / Control</div><div class="mc-val p">${tLibS} / ${tLibC}</div><div class="mc-sub">Horarios libres · agendadas ${tAgS} / ${tAgC}</div></div>`:''}
       ${alertas>0?`<div class="mc amber"><div class="mc-label">⚠ Baja disponibilidad</div><div class="mc-val a">${alertas}</div><div class="mc-sub">≤ 3 slots libres</div></div>`:''}
       <div class="mc red"><div class="mc-label">Saturados</div><div class="mc-val r">${sat}</div><div class="mc-sub">Sin disponibilidad</div></div>
       <div class="mc amber"><div class="mc-label">Ocup. promedio</div><div class="mc-val a">${promPct}%</div><div class="mc-sub">Todos los días</div></div>
@@ -2137,6 +2150,12 @@ function estadoAgenda(r){
   const dt = fechaHoraAgenda(r);
   return dt && dt<=new Date() ? 'realizada' : 'programada';
 }
+// Tipo de sesión: Control (evento de control de 30 min) o Sesión. Las filas viejas
+// del registro no traen TIPO, así que se deduce del nombre del evento.
+function tipoAgenda(r){
+  if(r.TIPO==='Control' || r.TIPO==='Sesión') return r.TIPO;
+  return /control/i.test(r.EVENTO||'') ? 'Control' : 'Sesión';
+}
 const ESTADO_META = {
   realizada:{lbl:'Realizada', cls:'bx-g'},
   programada:{lbl:'Programada', cls:'bx-b'},
@@ -2245,6 +2264,7 @@ function renderAgendas(rows){
 
   met.innerHTML = `<div class="metrics">
     <div class="mc green"><div class="mc-label">Agendas</div><div class="mc-val g">${rows.length}</div><div class="mc-sub">Período filtrado · ~${promSem}/semana</div></div>
+    <div class="mc purple"><div class="mc-label">Sesión / Control</div><div class="mc-val p">${rows.filter(r=>tipoAgenda(r)!=='Control').length} / ${rows.filter(r=>tipoAgenda(r)==='Control').length}</div><div class="mc-sub">Agendas del período por tipo</div></div>
     <div class="mc blue"><div class="mc-label">Hoy</div><div class="mc-val b">${deHoy.length-deHoyCancel}</div><div class="mc-sub">${deHoyCancel?deHoyCancel+' canceladas hoy':'Sin cancelaciones hoy'}</div></div>
     <div class="mc green"><div class="mc-label">Realizadas</div><div class="mc-val g">${realizadas.length}</div><div class="mc-sub">${concrecion===null?'Sin agendas pasadas':concrecion+'% de concreción'}</div></div>
     <div class="mc purple"><div class="mc-label">Próximas</div><div class="mc-val p">${proximas.length}</div><div class="mc-sub">Desde hoy en adelante</div></div>
@@ -2270,9 +2290,10 @@ function renderAgendas(rows){
   const profMap = {};
   rows.forEach(r=>{
     const nombre = (r.PROFESIONAL||'').trim() || 'Sin asignar';
-    if(!profMap[nombre]) profMap[nombre] = {nombre, rol:r.ROL||'', cuenta:r.CUENTA||'', total:0, prox:0, cancel:0, noshow:0};
+    if(!profMap[nombre]) profMap[nombre] = {nombre, rol:r.ROL||'', cuenta:r.CUENTA||'', total:0, prox:0, cancel:0, noshow:0, ses:0, ctl:0};
     const p = profMap[nombre];
     p.total++;
+    if(tipoAgenda(r)==='Control') p.ctl++; else p.ses++;
     if(r.ESTADO==='Cancelada') p.cancel++;
     if((r['NO SHOW']||'')==='SI') p.noshow++;
     const d = parseDate(r.FECHA);
@@ -2287,6 +2308,7 @@ function renderAgendas(rows){
         <div class="ct-av av-g">${initials(p.nombre)}</div>
         <div class="ct-info"><div class="ct-name">${p.nombre}</div><div class="ct-meta">${[p.rol,p.cuenta].filter(Boolean).join(' · ')}</div></div>
         <span class="badge bx-g">${p.total} agendas</span>
+        ${p.ctl?`<span class="badge bx-b" title="Sesiones normales">${p.ses} sesión</span><span class="badge bx-p" title="Sesiones de control">${p.ctl} control</span>`:''}
         <span class="badge bx-p">${p.prox} próximas</span>
         <span class="badge ${pc>=20?'bx-r':'bx-gr'}">${p.cancel} cancel. (${pc}%)</span>
         ${p.noshow?`<span class="badge bx-o">${p.noshow} no-show</span>`:''}
@@ -2328,7 +2350,7 @@ function renderAgendas(rows){
 
   // ── Detalle con buscador + filtros por estado + export ──
   AGENDAS_VIEW = [...rows].sort((a,b)=>String(b.FECHA+' '+b.HORA).localeCompare(String(a.FECHA+' '+a.HORA)));
-  const PILLS = [['todas','Todas'],['programada','Programadas'],['realizada','Realizadas'],['cancelada','Canceladas'],['noshow','No-shows'],['sinauditar','⚠ Sin auditar'],['sinreportar','⚠ Sin reportar']];
+  const PILLS = [['todas','Todas'],['sesion','Sesiones'],['control','Controles'],['programada','Programadas'],['realizada','Realizadas'],['cancelada','Canceladas'],['noshow','No-shows'],['sinauditar','⚠ Sin auditar'],['sinreportar','⚠ Sin reportar']];
   det.innerHTML = `<div class="section">
     <div class="sec-hdr"><i class="ti ti-calendar-event" style="color:var(--blue)"></i><span class="sec-title">Detalle de agendamientos</span><span class="sec-badge sb-b" id="agCount">${AGENDAS_VIEW.length}</span>
       <button class="adh2-hist-btn" style="margin-left:10px" onclick="exportarAgendasCSV()" title="Descarga lo que está filtrado abajo"><i class="ti ti-download"></i> Exportar CSV</button></div>
@@ -2446,7 +2468,9 @@ function filtrarAgendas(query){
   const q = (query||'').toLowerCase().trim();
   return AGENDAS_VIEW.filter(r=>{
     const f = AGENDAS_FILTRO;
-    if(f==='sinauditar'){ if(!esAuditable(r) || asistencia(r)!=='pend') return false; }
+    if(f==='sesion'){ if(tipoAgenda(r)==='Control') return false; }
+    else if(f==='control'){ if(tipoAgenda(r)!=='Control') return false; }
+    else if(f==='sinauditar'){ if(!esAuditable(r) || asistencia(r)!=='pend') return false; }
     else if(f==='sinreportar'){ if(!esAuditable(r) || r.REPORTADO==='SI') return false; }
     else if(f!=='todas' && estadoAgenda(r)!==f) return false;
     if(q && ![r.PACIENTE,r.PROFESIONAL,r.EVENTO,r.EMAIL,r.CUENTA].some(v=>(v||'').toLowerCase().includes(q))) return false;
@@ -2473,6 +2497,7 @@ function renderAgendasLista(query){
       <div class="ct-av ${e==='cancelada'?'av-r':e==='noshow'?'av-a':'av-b'}">${initials(r.PACIENTE)}</div>
       <div class="ct-info"><div class="ct-name">${r.PACIENTE||'—'}</div>
         <div class="ct-meta">${r.PROFESIONAL||'Sin profesional'} · ${r.EVENTO||''} · ${r.CUENTA||''}</div></div>
+      <span class="badge ${tipoAgenda(r)==='Control'?'bx-p':'bx-b'}" title="Tipo de sesión">${tipoAgenda(r)}</span>
       <span class="badge bx-gr">${fecha} ${r.HORA||''}</span>
       <span class="badge ${m.cls}">${m.lbl}</span>
       ${esAuditable(r)?(()=>{const a=asistencia(r);return `<span class="badge ${ASIST_META[a].cls}" title="Auditoría de asistencia"><i class="ti ${ASIST_META[a].ico}" style="font-size:10px"></i>${a==='si'?'Asistió':a==='no'?'No asistió':'Sin auditar'}</span>`;})():''}
@@ -2484,10 +2509,11 @@ function renderAgendasLista(query){
 
 function exportarAgendasCSV(){
   const rows = filtrarAgendas(g('agSearch') ? g('agSearch').value : '');
-  const cols = ['CUENTA','PROFESIONAL','ROL','EVENTO','PACIENTE','EMAIL','FECHA','HORA','ESTADO','ASISTIO','REPORTADO','CREADO','MOTIVO CANCELACIÓN'];
+  const cols = ['CUENTA','PROFESIONAL','ROL','EVENTO','TIPO','PACIENTE','EMAIL','FECHA','HORA','ESTADO','ASISTIO','REPORTADO','CREADO','MOTIVO CANCELACIÓN'];
   const esc = v => { v = String(v==null?'':v); return /[";\n,]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
   const csv = '﻿' + cols.join(';') + '\n' +
     rows.map(r=>cols.map(c=>{
+      if(c==='TIPO') return esc(tipoAgenda(r));
       if(c==='ESTADO') return esc(ESTADO_META[estadoAgenda(r)].lbl);
       if(c==='ASISTIO') return esc(esAuditable(r) ? ASIST_META[asistencia(r)].lbl.replace('¿Asistió?','Sin auditar') : '');
       if(c==='REPORTADO') return esc(esAuditable(r) ? (r.REPORTADO==='SI'?'Reportado':'Sin reportar') : '');
@@ -2557,6 +2583,7 @@ function renderAgendasDia(){
           return `<div class="ac-row" style="align-items:center;flex-wrap:wrap" title="${r.EMAIL||''} · ${r.EVENTO||''}${r['MOTIVO CANCELACIÓN']?' · '+r['MOTIVO CANCELACIÓN']:''}">
             <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted2);flex-shrink:0">${r.HORA||'—'}</span>
             <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.PACIENTE||'—'}</span>
+            ${tipoAgenda(r)==='Control'?'<span class="badge bx-p" style="flex-shrink:0" title="Sesión de control">Control</span>':''}
             <span class="badge ${m.cls}" style="flex-shrink:0">${m.lbl}</span>
             ${esAuditable(r)?(()=>{ const a=asistencia(r), am=ASIST_META[a];
               return `<button class="adh2-status-btn${a==='si'?' done':''}" style="margin-left:0${a==='no'?';background:var(--rbg);border-color:var(--rborder);color:var(--red)':''}" onclick="ciclarAsistencia('${r.INVITEE_URI}',this)" title="Clic para ciclar: sin auditar → asistió → no asistió"><i class="ti ${am.ico}"></i>${am.lbl}</button>
