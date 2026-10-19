@@ -27,6 +27,8 @@
 
 // Para agregar otra cuenta: sumar una entrada acá y su token en Propiedades del script.
 // "pros" mapea el UUID de usuario de Calendly → nombre/rol que usa el dashboard
+// (también acepta '@' + nombre de perfil, ej. '@amparo-testoboost', y lo resuelve solo;
+// "control" = slug del evento de control de ese profesional, si lo tiene)
 // (mismo mapeo que los proxies de disponibilidad). Es necesario porque algunos
 // eventos figuran hosteados por la cuenta madre ("Testo Boost Agendas" /
 // "testo-equipo3") y no por el profesional real.
@@ -39,6 +41,7 @@ const CUENTAS = [
       'a3a01f0f-457c-44fd-b6e2-37361f23ad45': { nombre: 'Majo', rol: 'Nutricionista' },
       'c4a624a6-487b-426f-b855-f70d70d6b8c7': { nombre: 'Doc Alí', rol: 'Médico' },
       '7abeadfc-6406-4136-be7d-8bb3258b8753': { nombre: 'Luciana Labarthe', rol: 'Profesional' },
+      '@santiagonavarro-testoboost': { nombre: 'Santiago Navarro', rol: 'Entrenador', control: 'sesion-de-control-santiago-navarro' },
     },
   },
   {
@@ -50,6 +53,8 @@ const CUENTAS = [
       'c25515f6-6765-4e14-8732-69abb23e47ed': { nombre: 'Juliana Selvaggi', rol: 'Nutricionista' },
       '98416f98-90d8-4892-acce-4ba13b74d886': { nombre: 'Mario Danieli', rol: 'Coach' },
       '99234c0c-75ea-4dbd-b270-24ec34f0ea0e': { nombre: 'Martín Alves', rol: 'Entrenador' },
+      'becb68d0-fe18-4fda-af7e-439c5837e1f8': { nombre: 'Juan Cruz Primus', rol: 'Entrenador' },
+      '@amparo-testoboost': { nombre: 'Amparo García', rol: 'Nutricionista', control: 'new-meeting' },
     },
   },
 ];
@@ -64,7 +69,7 @@ const NOMBRE_HOJA = 'AGENDAS';
 const HEADERS = [
   'CUENTA', 'PROFESIONAL', 'ROL', 'EVENTO', 'PACIENTE', 'NOMBRE', 'APELLIDO', 'EMAIL',
   'FECHA', 'HORA', 'ESTADO', 'NO SHOW', 'CREADO', 'MOTIVO CANCELACIÓN',
-  'EVENT_URI', 'INVITEE_URI', 'ULTIMO_SYNC', 'ASISTIO', 'REPORTADO',
+  'EVENT_URI', 'INVITEE_URI', 'ULTIMO_SYNC', 'ASISTIO', 'REPORTADO', 'TIPO',
 ];
 
 /* ══════════════ API Calendly ══════════════ */
@@ -84,8 +89,7 @@ function apiGet_(url, token) {
 
 // Lista eventos agendados con paginación. Intenta a nivel organización (trae los
 // eventos de todos los miembros); si el token no tiene permiso, cae a nivel usuario.
-function listarEventos_(token) {
-  const me = apiGet_('https://api.calendly.com/users/me', token).resource;
+function listarEventos_(token, me) {
   const min = new Date(Date.now() - DIAS_ATRAS * 86400000).toISOString();
   const max = new Date(Date.now() + DIAS_ADELANTE * 86400000).toISOString();
   const base = 'https://api.calendly.com/scheduled_events?count=100&sort=start_time:asc'
@@ -135,6 +139,62 @@ function listarInvitados_(eventos, token) {
   return porEvento;
 }
 
+// Resuelve los profesionales cargados como '@perfil' a su UUID, usando la lista de
+// miembros de la cuenta. Devuelve un mapa UUID → profesional (los que ya vienen por
+// UUID pasan tal cual).
+function resolverPerfiles_(token, org, pros) {
+  const out = {};
+  const pendientes = [];
+  Object.keys(pros).forEach(function (k) {
+    if (k.charAt(0) === '@') pendientes.push(k); else out[k] = pros[k];
+  });
+  if (!pendientes.length) return out;
+  try {
+    const porPerfil = {};
+    const data = apiGet_('https://api.calendly.com/organization_memberships?count=100&organization=' + encodeURIComponent(org), token);
+    (data.collection || []).forEach(function (m) { porPerfil[m.user.slug] = String(m.user.uri).split('/').pop(); });
+    pendientes.forEach(function (k) {
+      const uuid = porPerfil[k.slice(1)];
+      if (uuid) out[uuid] = pros[k];
+      else console.warn('Perfil de Calendly no encontrado: ' + k.slice(1));
+    });
+  } catch (e) {
+    console.warn('No se pudieron resolver los perfiles ' + pendientes.join(', ') + ': ' + e.message);
+  }
+  return out;
+}
+
+// URIs de los tipos de evento que son "control". Un evento es de control si es el
+// slug de control indicado para su dueño, o (si el dueño no tiene uno indicado) si su
+// nombre o slug dice "control". Si la cuenta no deja listar tipos, devuelve {} y el
+// sync clasifica por el nombre del evento.
+function tiposControl_(token, org, pros) {
+  const set = {};
+  try {
+    let url = 'https://api.calendly.com/event_types?count=100&organization=' + encodeURIComponent(org);
+    for (let pag = 0; pag < 10 && url; pag++) {
+      const data = apiGet_(url, token);
+      (data.collection || []).forEach(function (et) {
+        const owner = String((et.profile && et.profile.owner) || '').split('/').pop();
+        const p = pros[owner];
+        const slug = String(et.slug || '');
+        const esControl = (p && p.control) ? slug === p.control : /control/i.test(slug + ' ' + (et.name || ''));
+        if (esControl) set[et.uri] = true;
+      });
+      url = data.pagination && data.pagination.next_page ? data.pagination.next_page : null;
+    }
+  } catch (e) {
+    console.warn('No se pudieron listar los tipos de evento: ' + e.message);
+  }
+  return set;
+}
+
+function tipoEvento_(ev, prof, controlSet) {
+  if (controlSet[ev.event_type]) return 'Control';
+  if (prof.control) return 'Sesión';
+  return /control/i.test(ev.name || '') ? 'Control' : 'Sesión';
+}
+
 // El profesional real: primer host del evento que figure en el mapeo "pros".
 // Si ninguno está mapeado (profesional nuevo), usa el nombre que reporta Calendly
 // para no perder el dato — conviene agregarlo al mapeo cuando aparezca.
@@ -161,11 +221,15 @@ function syncAgendas() {
       console.warn('Falta ' + cuenta.propToken + ' en Propiedades del script — cuenta salteada.');
       return;
     }
-    const eventos = listarEventos_(token);
+    const me = apiGet_('https://api.calendly.com/users/me', token).resource;
+    const pros = resolverPerfiles_(token, me.current_organization, cuenta.pros || {});
+    const controlSet = tiposControl_(token, me.current_organization, pros);
+    const eventos = listarEventos_(token, me);
     const invitados = listarInvitados_(eventos, token);
 
     eventos.forEach(function (ev) {
-      const prof = resolverProfesional_(ev, cuenta.pros || {});
+      const prof = resolverProfesional_(ev, pros);
+      const tipo = tipoEvento_(ev, prof, controlSet);
       const inicio = new Date(ev.start_time);
       (invitados[ev.uri] || []).forEach(function (inv) {
         const cancel = inv.cancellation || null;
@@ -189,6 +253,7 @@ function syncAgendas() {
           ahora,
           '', // ASISTIO — se preserva de lo existente en el merge
           '', // REPORTADO — ídem
+          tipo, // TIPO — Sesión | Control
         ];
       });
     });
@@ -238,7 +303,12 @@ function obtenerHoja_() {
     props.setProperty('SHEET_ID', ss.getId());
     ss.getSheets()[0].setName(NOMBRE_HOJA);
   }
-  return ss.getSheetByName(NOMBRE_HOJA) || ss.insertSheet(NOMBRE_HOJA);
+  const hoja = ss.getSheetByName(NOMBRE_HOJA) || ss.insertSheet(NOMBRE_HOJA);
+  // Si el registro es de una versión con menos columnas, se agregan las que faltan
+  if (hoja.getMaxColumns() < HEADERS.length) {
+    hoja.insertColumnsAfter(hoja.getMaxColumns(), HEADERS.length - hoja.getMaxColumns());
+  }
+  return hoja;
 }
 
 function instalarTrigger() {

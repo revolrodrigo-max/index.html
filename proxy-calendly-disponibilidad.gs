@@ -33,7 +33,12 @@ const CACHE_MIN = 10;           // minutos que se sirve la respuesta cacheada
 const CACHE_ET_HORAS = 6;       // horas que se recuerda el event_type de cada profesional
 const MAX_SNAPSHOT_CHARS = 8000; // límite prudente para Propiedades del script (~9KB)
 
-// Mapa de profesionales por equipo. Para agregar a alguien, sumar su URI de usuario.
+// Mapa de profesionales por equipo. Para agregar a alguien hay dos formas:
+//  - Con su URI de usuario de Calendly (https://api.calendly.com/users/<uuid>), o
+//  - Con '@' + el nombre de su perfil de Calendly (lo que va después de calendly.com/),
+//    por ejemplo '@amparo-testoboost': el script busca el URI solo.
+// Campos: slug = evento de SESIÓN; control = evento de CONTROL (opcional). Si no se
+// indica "control", se busca solo un evento activo cuyo nombre o slug diga "control".
 const EQUIPOS = {
   '2': {
     etiqueta: 'Equipo 2',
@@ -42,6 +47,7 @@ const EQUIPOS = {
       'https://api.calendly.com/users/a3a01f0f-457c-44fd-b6e2-37361f23ad45': { nombre: 'Majo', rol: 'Nutricionista', slug: 'sesion-1' },
       'https://api.calendly.com/users/c4a624a6-487b-426f-b855-f70d70d6b8c7': { nombre: 'Doc Alí', rol: 'Médico', slug: 'sesion-endocrinologica-doctor-ali' },
       'https://api.calendly.com/users/7abeadfc-6406-4136-be7d-8bb3258b8753': { nombre: 'Luciana Labarthe', rol: 'Profesional', slug: 'luciana-labarthe-sesion-de-entrenamiento' },
+      '@santiagonavarro-testoboost': { nombre: 'Santiago Navarro', rol: 'Entrenador', slug: '60min', control: 'sesion-de-control-santiago-navarro' },
     },
   },
   '3': {
@@ -52,6 +58,8 @@ const EQUIPOS = {
       'https://api.calendly.com/users/c25515f6-6765-4e14-8732-69abb23e47ed': { nombre: 'Juliana Selvaggi', rol: 'Nutricionista', slug: 'nueva-reunion' },
       'https://api.calendly.com/users/98416f98-90d8-4892-acce-4ba13b74d886': { nombre: 'Mario Danieli', rol: 'Coach', slug: '30min' },
       'https://api.calendly.com/users/99234c0c-75ea-4dbd-b270-24ec34f0ea0e': { nombre: 'Martín Alves', rol: 'Entrenador', slug: '60min' },
+      'https://api.calendly.com/users/becb68d0-fe18-4fda-af7e-439c5837e1f8': { nombre: 'Juan Cruz Primus', rol: 'Entrenador', slug: '30min' },
+      '@amparo-testoboost': { nombre: 'Amparo García', rol: 'Nutricionista', slug: 'sesion-nutricional-amparo-garcia', control: 'new-meeting' },
     },
   },
 };
@@ -162,15 +170,25 @@ function traerDisponibilidad_(cfg) {
   }
   debug.push('tramos de disponibilidad: ' + tramos.length);
 
-  let fallos = 0;
-  Object.keys(cfg.pros).forEach(function (userUri) {
-    const pro = cfg.pros[userUri];
-    try {
-      const etUri = resolverEventType_(userUri, pro, headers, cache, debug);
-      if (!etUri) { fallos++; return; }
+  const pros = resolverPerfiles_(cfg, headers, cache, debug);
+  const contar = function (o) { return Object.keys(o || {}).length; };
+  const unir = function (a, b) {
+    const u = {};
+    Object.keys(a || {}).forEach(function (k) { u[k] = true; });
+    Object.keys(b || {}).forEach(function (k) { u[k] = true; });
+    return Object.keys(u).length;
+  };
 
-      // Agendadas: una sola llamada para toda la ventana
-      const agPorDia = {};
+  let fallos = 0;
+  Object.keys(pros).forEach(function (userUri) {
+    const pro = pros[userUri];
+    try {
+      const tipos = resolverEventTypes_(userUri, pro, headers, cache, debug);
+      if (!tipos || !tipos.sesion) { fallos++; return; }
+      const controlUri = tipos.control;
+
+      // Agendadas: una sola llamada para toda la ventana, separadas por tipo de evento
+      const agSesion = {}, agControl = {};
       const evUrl = 'https://api.calendly.com/scheduled_events?user=' + encodeURIComponent(userUri) +
         '&organization=' + encodeURIComponent(cfg.org) +
         '&status=active&min_start_time=' + encodeURIComponent(evStart) +
@@ -179,41 +197,36 @@ function traerDisponibilidad_(cfg) {
       if (evResp.getResponseCode() === 200) {
         (JSON.parse(evResp.getContentText()).collection || []).forEach(function (ev) {
           const d = fechaArg_(ev.start_time);
-          agPorDia[d] = (agPorDia[d] || 0) + 1;
+          const destino = (controlUri && ev.event_type === controlUri) ? agControl : agSesion;
+          destino[d] = (destino[d] || 0) + 1;
         });
       } else {
         debug.push(pro.nombre + ': scheduled_events HTTP ' + evResp.getResponseCode());
       }
 
-      // Slots libres: una llamada por tramo
-      const libPorDia = {};
-      tramos.forEach(function (t) {
-        const avUrl = 'https://api.calendly.com/event_type_available_times' +
-          '?event_type=' + encodeURIComponent(etUri) +
-          '&start_time=' + t.start + '&end_time=' + t.end;
-        const avResp = UrlFetchApp.fetch(avUrl, { headers: headers, muteHttpExceptions: true });
-        if (avResp.getResponseCode() !== 200) {
-          debug.push(pro.nombre + ': available_times HTTP ' + avResp.getResponseCode() +
-            ' [' + t.start.slice(0, 10) + '..' + t.end.slice(0, 10) + '] ' + avResp.getContentText().substring(0, 160));
-          return;
-        }
-        (JSON.parse(avResp.getContentText()).collection || []).forEach(function (slot) {
-          const d = fechaArg_(slot.start_time);
-          libPorDia[d] = (libPorDia[d] || 0) + 1;
-        });
-      });
+      // Slots libres por tipo de evento (cada horario se guarda por su hora de inicio
+      // para poder unir sesión + control sin contar dos veces el mismo horario)
+      const libSesion = slotsPorDia_(tipos.sesion, tramos, headers, debug, pro.nombre);
+      const libControl = controlUri ? slotsPorDia_(controlUri, tramos, headers, debug, pro.nombre) : {};
 
       const dias = {};
-      Object.keys(agPorDia).forEach(function (d) { dias[d] = true; });
-      Object.keys(libPorDia).forEach(function (d) { dias[d] = true; });
+      [agSesion, agControl, libSesion, libControl].forEach(function (m) {
+        Object.keys(m).forEach(function (d) { dias[d] = true; });
+      });
       Object.keys(dias).forEach(function (dia) {
+        const aS = agSesion[dia] || 0, aC = agControl[dia] || 0;
         rows.push({
           PROFESIONAL: pro.nombre,
           ROL: pro.rol,
           EQUIPO: cfg.etiqueta,
           FECHA: dia,
-          AGENDADAS: agPorDia[dia] || 0,
-          LIBRES: libPorDia[dia] || 0,
+          AGENDADAS: aS + aC,
+          LIBRES: unir(libSesion[dia], libControl[dia]),  // horarios distintos, sin repetir
+          AGENDADAS_SESION: aS,
+          AGENDADAS_CONTROL: aC,
+          LIBRES_SESION: contar(libSesion[dia]),
+          LIBRES_CONTROL: contar(libControl[dia]),
+          TIENE_CONTROL: controlUri ? 1 : 0,
         });
       });
     } catch (err) {
@@ -226,12 +239,76 @@ function traerDisponibilidad_(cfg) {
   return { rows: rows, debug: debug };
 }
 
-// El event_type de un profesional casi nunca cambia: se cachea 6 h para ahorrar
+// Horarios libres de un tipo de evento, agrupados por día: { 'YYYY-MM-DD': { <hora de inicio>: true } }
+function slotsPorDia_(etUri, tramos, headers, debug, nombre) {
+  const porDia = {};
+  tramos.forEach(function (t) {
+    const avUrl = 'https://api.calendly.com/event_type_available_times' +
+      '?event_type=' + encodeURIComponent(etUri) +
+      '&start_time=' + t.start + '&end_time=' + t.end;
+    const avResp = UrlFetchApp.fetch(avUrl, { headers: headers, muteHttpExceptions: true });
+    if (avResp.getResponseCode() !== 200) {
+      debug.push(nombre + ': available_times HTTP ' + avResp.getResponseCode() +
+        ' [' + t.start.slice(0, 10) + '..' + t.end.slice(0, 10) + '] ' + avResp.getContentText().substring(0, 160));
+      return;
+    }
+    (JSON.parse(avResp.getContentText()).collection || []).forEach(function (slot) {
+      const d = fechaArg_(slot.start_time);
+      if (!porDia[d]) porDia[d] = {};
+      porDia[d][slot.start_time] = true;
+    });
+  });
+  return porDia;
+}
+
+// Los profesionales cargados como '@perfil' se resuelven a su URI de usuario con la
+// lista de miembros de la cuenta (una llamada, cacheada 6 h).
+function resolverPerfiles_(cfg, headers, cache, debug) {
+  const pros = {};
+  const pendientes = [];
+  Object.keys(cfg.pros).forEach(function (k) {
+    if (k.charAt(0) === '@') pendientes.push(k); else pros[k] = cfg.pros[k];
+  });
+  if (!pendientes.length) return pros;
+
+  const clave = 'perfiles_eq' + cfg.equipo;
+  let porPerfil = null;
+  const enCache = cache.get(clave);
+  if (enCache) {
+    porPerfil = JSON.parse(enCache);
+  } else {
+    const resp = UrlFetchApp.fetch(
+      'https://api.calendly.com/organization_memberships?organization=' + encodeURIComponent(cfg.org) + '&count=100',
+      { headers: headers, muteHttpExceptions: true }
+    );
+    if (resp.getResponseCode() !== 200) {
+      debug.push('organization_memberships HTTP ' + resp.getResponseCode() + ': no se pudieron resolver los perfiles ' + pendientes.join(', '));
+      return pros;
+    }
+    porPerfil = {};
+    (JSON.parse(resp.getContentText()).collection || []).forEach(function (m) {
+      porPerfil[m.user.slug] = m.user.uri;
+    });
+    // Solo se cachea si se encontraron todos, para que un alta reciente se vea enseguida
+    const todos = pendientes.every(function (k) { return porPerfil[k.slice(1)]; });
+    if (todos) cache.put(clave, JSON.stringify(porPerfil), CACHE_ET_HORAS * 3600);
+  }
+
+  pendientes.forEach(function (k) {
+    const uri = porPerfil[k.slice(1)];
+    if (uri) pros[uri] = cfg.pros[k];
+    else debug.push(cfg.pros[k].nombre + ': no se encontró el perfil "' + k.slice(1) + '" en la cuenta de Calendly');
+  });
+  return pros;
+}
+
+// Los event_types de un profesional casi nunca cambian: se cachean 6 h para ahorrar
 // una llamada por profesional en cada refresco del dashboard.
-function resolverEventType_(userUri, pro, headers, cache, debug) {
-  const clave = 'et_' + userUri.split('/').pop();
+// Devuelve { sesion: <uri>, control: <uri|null> }.
+function resolverEventTypes_(userUri, pro, headers, cache, debug) {
+  const clave = 'et2_' + userUri.split('/').pop();
   const cacheado = cache.get(clave);
-  if (cacheado) return cacheado;
+  if (cacheado) return JSON.parse(cacheado);
 
   const etUrl = 'https://api.calendly.com/event_types?user=' + encodeURIComponent(userUri) + '&active=true&count=20';
   const resp = UrlFetchApp.fetch(etUrl, { headers: headers, muteHttpExceptions: true });
@@ -241,32 +318,52 @@ function resolverEventType_(userUri, pro, headers, cache, debug) {
   }
 
   const ets = JSON.parse(resp.getContentText()).collection || [];
-  const elegido = ets.filter(function (et) {
-    return et.scheduling_url && et.scheduling_url.indexOf('/' + pro.slug) !== -1;
-  })[0] || ets[0];
+  const ultimo = function (et) { return String(et.scheduling_url || '').split('?')[0].split('/').pop(); };
+  const porSlug = function (slug) {
+    return ets.filter(function (et) { return ultimo(et) === slug; })[0];
+  };
 
-  if (!elegido) {
+  // Sesión: slug exacto; si no, coincidencia parcial como antes
+  const sesionElegida = porSlug(pro.slug) || ets.filter(function (et) {
+    return et.scheduling_url && et.scheduling_url.indexOf('/' + pro.slug) !== -1;
+  })[0];
+
+  // Control: el slug indicado, o (sin indicar) un evento activo que diga "control"
+  const control = pro.control
+    ? porSlug(pro.control)
+    : ets.filter(function (et) {
+        return et !== sesionElegida && /control/i.test((et.slug || '') + ' ' + (et.name || ''));
+      })[0];
+  if (pro.control && !control) debug.push(pro.nombre + ': no se encontró el evento de control "' + pro.control + '"');
+  if (!pro.control && !control) debug.push(pro.nombre + ': sin evento de control detectado (se cuenta solo sesión)');
+
+  const sesion = sesionElegida || ets.filter(function (et) { return et !== control; })[0];
+  if (!sesion) {
     debug.push(pro.nombre + ': sin event types activos (slug buscado: ' + pro.slug + ')');
     return null;
   }
-  if (elegido.scheduling_url.indexOf('/' + pro.slug) === -1) {
-    debug.push(pro.nombre + ': no se encontró el slug "' + pro.slug + '", se usa "' + elegido.slug + '"');
-  }
+  if (!sesionElegida) debug.push(pro.nombre + ': no se encontró el slug "' + pro.slug + '", se usa "' + sesion.slug + '"');
 
-  cache.put(clave, elegido.uri, CACHE_ET_HORAS * 3600);
-  return elegido.uri;
+  const res = { sesion: sesion.uri, control: control ? control.uri : null };
+  cache.put(clave, JSON.stringify(res), CACHE_ET_HORAS * 3600);
+  return res;
 }
 
 /* ══════════════ Última respuesta buena ══════════════ */
-// Se guarda compacta (arrays en vez de objetos) porque Propiedades del script
-// admite ~9KB por valor.
+// Se guarda compacta (tabla de profesionales + filas con índices) porque Propiedades
+// del script admite ~9KB por valor.
 
 function guardarSnapshot_(equipo, rows) {
   try {
-    const compacto = JSON.stringify({
-      g: new Date().toISOString(),
-      r: rows.map(function (r) { return [r.PROFESIONAL, r.ROL, r.EQUIPO, r.FECHA, r.AGENDADAS, r.LIBRES]; }),
+    const profs = [];
+    const idx = {};
+    const filas = rows.map(function (r) {
+      const k = r.PROFESIONAL + '|' + r.ROL + '|' + r.EQUIPO;
+      if (idx[k] === undefined) { idx[k] = profs.length; profs.push([r.PROFESIONAL, r.ROL, r.EQUIPO]); }
+      return [idx[k], r.FECHA, r.AGENDADAS, r.LIBRES, r.AGENDADAS_SESION || 0, r.AGENDADAS_CONTROL || 0,
+        r.LIBRES_SESION || 0, r.LIBRES_CONTROL || 0, r.TIENE_CONTROL || 0];
     });
+    const compacto = JSON.stringify({ g: new Date().toISOString(), p: profs, r: filas });
     if (compacto.length > MAX_SNAPSHOT_CHARS) return; // demasiado grande: se omite
     PropertiesService.getScriptProperties().setProperty('SNAPSHOT_EQ' + equipo, compacto);
   } catch (err) {
@@ -282,7 +379,14 @@ function leerSnapshot_(equipo) {
     return {
       generado: datos.g,
       rows: datos.r.map(function (a) {
-        return { PROFESIONAL: a[0], ROL: a[1], EQUIPO: a[2], FECHA: a[3], AGENDADAS: a[4], LIBRES: a[5] };
+        if (!datos.p) { // formato anterior (sin desglose sesión/control)
+          return { PROFESIONAL: a[0], ROL: a[1], EQUIPO: a[2], FECHA: a[3], AGENDADAS: a[4], LIBRES: a[5] };
+        }
+        const p = datos.p[a[0]];
+        return {
+          PROFESIONAL: p[0], ROL: p[1], EQUIPO: p[2], FECHA: a[1], AGENDADAS: a[2], LIBRES: a[3],
+          AGENDADAS_SESION: a[4], AGENDADAS_CONTROL: a[5], LIBRES_SESION: a[6], LIBRES_CONTROL: a[7], TIENE_CONTROL: a[8],
+        };
       }),
     };
   } catch (err) {
@@ -313,4 +417,22 @@ function limpiarCache() {
   const cfg = leerConfig_();
   CacheService.getScriptCache().remove('disp_eq' + cfg.equipo);
   Logger.log('Caché borrado para ' + cfg.etiqueta);
+}
+
+// Lista todos los miembros de la cuenta de Calendly con su URI, para sumar
+// profesionales nuevos a EQUIPOS. Ejecutar a mano desde el editor (botón ▶).
+function listarIntegrantes() {
+  const cfg = leerConfig_();
+  const resp = UrlFetchApp.fetch(
+    'https://api.calendly.com/organization_memberships?organization=' + encodeURIComponent(cfg.org) + '&count=100',
+    { headers: { Authorization: 'Bearer ' + cfg.token }, muteHttpExceptions: true }
+  );
+  if (resp.getResponseCode() !== 200) {
+    Logger.log('Error HTTP ' + resp.getResponseCode() + ': ' + resp.getContentText().substring(0, 200));
+    return;
+  }
+  (JSON.parse(resp.getContentText()).collection || []).forEach(function (m) {
+    const registrado = (cfg.pros[m.user.uri] || cfg.pros['@' + m.user.slug]) ? '  [YA ESTÁ]' : '  [NUEVO]';
+    Logger.log(m.user.name + ' | ' + m.user.scheduling_url + ' | ' + m.user.uri + registrado);
+  });
 }
